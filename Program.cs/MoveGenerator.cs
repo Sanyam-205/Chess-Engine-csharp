@@ -60,7 +60,96 @@ public class MoveGenerator
         }
     }
     
-    
+    public void GenerateRookMoves(Board board, Move[] moveList, ref int moveCount)
+    {
+        ulong friendlyPieces = (board.colorToMove == 0) ? board.colorBitboard[(int)PieceTeam.WhitePieces] : board.colorBitboard[(int)PieceTeam.BlackPieces];
+
+        ulong rooks = board.pieceBitboards[(int)Piece.WhiteRooks + board.colorToMove * 6];
+
+        
+
+        while(rooks!=0)
+        {
+            int square = BitOperations.TrailingZeroCount(rooks);
+       
+            ulong rawAttacks = AttackTables.GetRookAttacks(square, board.AllPieces);
+
+            ulong pseudoLegalMoves = rawAttacks & ~friendlyPieces;
+        
+            while(pseudoLegalMoves != 0)
+            {
+                int targetSquare = BitOperations.TrailingZeroCount(pseudoLegalMoves);
+
+                Move newMove = new Move(square, targetSquare);
+                moveList[moveCount++] = newMove;
+
+                pseudoLegalMoves &= (pseudoLegalMoves-1);
+            }
+            
+            rooks &= rooks-1;
+        }
+        
+        
+    }
+
+    public void GenerateBishopMoves(Board board, Move[] moveList, ref int moveCount)
+    {
+        ulong friendlyPieces = (board.colorToMove == 0) ? board.colorBitboard[(int)PieceTeam.WhitePieces] : board.colorBitboard[(int)PieceTeam.BlackPieces];
+
+        ulong bishops = board.pieceBitboards[(int)Piece.WhiteBishops + board.colorToMove * 6];
+
+        while(bishops != 0)
+        {
+            int square = BitOperations.TrailingZeroCount(bishops);
+
+            ulong rawAttacks = AttackTables.GetBishopAttacks(square, board.AllPieces);
+
+            ulong pseudoLegalMoves = rawAttacks & ~friendlyPieces;
+
+            while(pseudoLegalMoves != 0)
+            {
+                int targetSquare = BitOperations.TrailingZeroCount(pseudoLegalMoves);
+
+                Move newMove = new Move(square, targetSquare);
+                moveList[moveCount++] = newMove;
+
+                pseudoLegalMoves &= (pseudoLegalMoves-1); 
+            }
+
+            bishops &= bishops-1;
+        }
+    }
+
+
+    public void GenerateQueenMoves(Board board, Move[] moveList, ref int moveCount)
+    {
+        ulong friendlyPieces = (board.colorToMove == 0) ? board.colorBitboard[(int)PieceTeam.WhitePieces] : board.colorBitboard[(int)PieceTeam.BlackPieces];
+
+        ulong queens = board.pieceBitboards[(int)Piece.WhiteQueens + board.colorToMove * 6];
+
+        
+
+        while(queens!=0)
+        {
+            int square = BitOperations.TrailingZeroCount(queens);
+            ulong rawAttacks = AttackTables.GetQueenAttacks(square, board.AllPieces);
+            ulong pseudoLegalMoves = rawAttacks & ~friendlyPieces;
+            
+
+            while(pseudoLegalMoves!= 0)
+            {
+                int targetSquare = BitOperations.TrailingZeroCount(pseudoLegalMoves);
+                
+                Move newMove = new Move(square, targetSquare);
+                moveList[moveCount++] = newMove;
+
+                pseudoLegalMoves &= pseudoLegalMoves - 1;
+            }
+
+            queens &= queens - 1;
+        }
+
+    }
     public void GenerateKingMoves(Board board, Move[] moveList, ref int moveCount)
     {
 

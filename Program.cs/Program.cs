@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 class Program
 {
@@ -13,7 +14,8 @@ class Program
         // string fen4 = "rnbqkbnr/ppppp1pp/8/4Pp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 1"; //enPassant
         // string fen5 = "r1bqkb1r/pppppppp/2n2n2/3p4/1q2p1p1/P4N2/1PPPPPPP/RNBQKB1R b KQkq - 0 1"; //custom testing fen
         // string fen6 = "r3rkq1/p2qbp1q/1q3n2/3p3q/5Bq1/1PN2Q2/P1P1pPPP/3R1RK1 b - - 0 2";
-        // string fen7 = "1R6/5pk1/6pp/1P2p3/1r1p4/3K3P/6P1/8 w - - 0 2";
+        // string fen7 = "1R6/5pk1/1P4pp/8/1r6/4p2P/3p2P1/3K4 w - - 0 2";
+        // string fen8 = "11R6/1r3pk1/6pp/8/8/4pQ1P/3p2P1/3K4 w - - 0 2";
         // string fen8 = "8/8/8/8/8/r7/P7/8 w - - 0 1";
         FenUtility.LoadFromFen(fen0, board);
 
@@ -75,10 +77,13 @@ class Program
         // }
         
         // MakeMove(board);
-
-        moveGenerator.GenerateKnightMoves(board, moveList, ref moveCount);
-        moveGenerator.GenerateKingMoves(board, moveList, ref moveCount);
-        moveGenerator.GeneratePawnMoves(board, moveList, ref moveCount);
+        // AttackTables.GenerateRookAttackTable();
+        // moveGenerator.GenerateKnightMoves(board, moveList, ref moveCount);
+        // moveGenerator.GenerateKingMoves(board, moveList, ref moveCount);
+        // moveGenerator.GeneratePawnMoves(board, moveList, ref moveCount);
+        // moveGenerator.GenerateRookMoves(board, moveList, ref moveCount);
+        // moveGenerator.GenerateBishopMoves(board, moveList, ref moveCount);
+        // moveGenerator.GenerateQueenMoves(board, moveList, ref moveCount);
         
         // for(int i = 0; i < moveCount; i++)
         // {
