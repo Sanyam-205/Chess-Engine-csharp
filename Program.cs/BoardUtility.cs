@@ -1,7 +1,7 @@
 using System;
 using static Board;
 
-public static class BoardUtils
+public static class BoardUtility
 {
     public static string IndexToSquare(int index)
     {

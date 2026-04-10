@@ -20,7 +20,7 @@ public static class PerftTool
         {
             Move move = moveList[i];
 
-            AssertNoStateLeak(board, move);
+            // AssertNoStateLeak(board, move);
 
             board.MakeMove(move);
 
@@ -38,8 +38,10 @@ public static class PerftTool
         return nodes;
     }
 
-    public static void PerftDivide(Board board, MoveGenerator moveGenerator, int depth)
+    public static Dictionary<string, long> PerftDivide(Board board, MoveGenerator moveGenerator, int depth)
     {
+        var results = new Dictionary<string, long>();
+        
         long totalNodes = 0;
         Move[] moveList = new Move[256];
         int moveCount = 0;
@@ -49,6 +51,9 @@ public static class PerftTool
         for (int i = 0; i < moveCount; i++)
         {
             Move move = moveList[i];
+
+            AssertNoStateLeak(board, move);
+
             board.MakeMove(move);
 
             int colorThatJustMoved = board.colorToMove ^ 1;
@@ -58,14 +63,26 @@ public static class PerftTool
             {
                 long nodes = Perft(board, moveGenerator, depth - 1);
                 totalNodes += nodes;
+
+
+                string uciMove = BoardUtility.MoveToUci(move);
+            
+                // Add to our dictionary for Stockfish comparison
+                results[uciMove] = nodes; 
                 
-                Console.WriteLine($"{BoardUtils.MoveToUci(move)}: {nodes}");
+                Console.WriteLine($"{uciMove}: {nodes}");
+
+                
+                // Console.WriteLine($"{BoardUtils.MoveToUci(move)}: {nodes}");
             }
 
             board.UnmakeMove(move);
         }
 
         Console.WriteLine($"\nTotal Nodes: {totalNodes}");
+        Console.WriteLine($"\nEngine Total Nodes: {totalNodes}");
+        return results;
+
     }
 
     public static void AssertNoStateLeak(Board board, Move move) 
@@ -83,17 +100,17 @@ public static class PerftTool
         board.MakeMove(move);
         board.UnmakeMove(move);
 
-        if (preAll != board.AllPieces) throw new Exception($"AllPieces leaked on {BoardUtils.MoveToUci(move)}");
-        if (preWhite != board.colorBitboard[(int)PieceTeam.WhitePieces]) throw new Exception($"White occupancy leaked on {BoardUtils.MoveToUci(move)}");
-        if (preBlack != board.colorBitboard[(int)PieceTeam.BlackPieces]) throw new Exception($"Black occupancy leaked on {BoardUtils.MoveToUci(move)}");
+        if (preAll != board.AllPieces) throw new Exception($"AllPieces leaked on {BoardUtility.MoveToUci(move)}");
+        if (preWhite != board.colorBitboard[(int)PieceTeam.WhitePieces]) throw new Exception($"White occupancy leaked on {BoardUtility.MoveToUci(move)}");
+        if (preBlack != board.colorBitboard[(int)PieceTeam.BlackPieces]) throw new Exception($"Black occupancy leaked on {BoardUtility.MoveToUci(move)}");
         
         for (int i = 0; i < 12; i++) {
             if (prePieces[i] != board.pieceBitboards[i]) {
-                throw new Exception($"Piece type {i} bitboard leaked on {BoardUtils.MoveToUci(move)}");
+                throw new Exception($"Piece type {i} bitboard leaked on {BoardUtility.MoveToUci(move)}");
             }
         }
         
-        if (preEnPassant != board.enPassantSquare) throw new Exception($"EP leaked on {BoardUtils.MoveToUci(move)}");
-        if (preCastling != board.castlingRights) throw new Exception($"Castling leaked on {BoardUtils.MoveToUci(move)}");
+        if (preEnPassant != board.enPassantSquare) throw new Exception($"EP leaked on {BoardUtility.MoveToUci(move)}");
+        if (preCastling != board.castlingRights) throw new Exception($"Castling leaked on {BoardUtility.MoveToUci(move)}");
     }
 }

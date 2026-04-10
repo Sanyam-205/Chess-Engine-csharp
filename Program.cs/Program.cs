@@ -1,8 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 
 class Program
 {
-    static void Main()
+    static void Main(string[] args)
     {
         Board board = new Board();
         MoveGenerator moveGenerator = new MoveGenerator(); 
@@ -14,5 +15,10 @@ class Program
         PerftTool.PerftDivide(board, moveGenerator, 4);
 
         Console.ReadLine(); 
+    
+        
+    
+    
     }
+
 }
