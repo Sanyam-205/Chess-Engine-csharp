@@ -189,6 +189,47 @@ public class MoveGenerator
                 // Removes the bit we just worked on from ulong,
                 pseudoLegalMoves &= (pseudoLegalMoves -1); 
             }
+
+
+            //CASTLING
+            ulong whiteKingSidePath = (1UL << 5) | (1UL << 6);
+            ulong whiteQueenSidePath = (1UL << 3) | (1UL << 2) | (1UL << 1);
+
+            ulong blackKingSidePath = (1UL<< 62) | (1UL << 61);
+            ulong blackQueenSidePath = (1UL<< 59) | (1UL << 58) | (1UL << 57);
+
+            if(board.colorToMove == 0)
+            {
+                if(((board.castlingRights & 1) != 0) && ((board.AllPieces & whiteKingSidePath) == 0) && !board.IsSquareAttacked(4, 0) && !board.IsSquareAttacked(5, 0) 
+                && !board.IsSquareAttacked(6, 0))
+                {
+                    Move castleMove = new Move(4, 6, (int)Move.MoveFlag.whiteKingSideCastle);
+                    moveList[moveCount++] = castleMove;
+                }
+                if(((board.castlingRights & 2) != 0) && ((board.AllPieces & whiteQueenSidePath) == 0) && !board.IsSquareAttacked(4, 0) && !board.IsSquareAttacked(2, 0) 
+                && !board.IsSquareAttacked(3, 0))
+                {
+                    Move castleMove = new Move(4, 2, (int)Move.MoveFlag.whiteQueenSideCastle);
+                    moveList[moveCount++] = castleMove;   
+                }
+            }
+            else
+            {
+                if(((board.castlingRights & 4) != 0) && ((board.AllPieces & blackKingSidePath) == 0) && !board.IsSquareAttacked(60, 1) && !board.IsSquareAttacked(61, 1) 
+                && !board.IsSquareAttacked(62, 1))
+                {
+                    Move castleMove = new Move(60, 62, (int)Move.MoveFlag.blackKingSideCastle);
+                    moveList[moveCount++] = castleMove;
+                }
+                if(((board.castlingRights & 8) != 0) && ((board.AllPieces & blackQueenSidePath) == 0) && !board.IsSquareAttacked(60, 1) 
+                && !board.IsSquareAttacked(59, 1) && !board.IsSquareAttacked(58, 1))
+                {
+                    Move castleMove = new Move(60, 58, (int)Move.MoveFlag.blackQueenSideCastle);
+                    moveList[moveCount++] = castleMove;
+                }
+                
+            }
+
             
             // 3. This removes the king from the king ulong by removing 1 from the LSB. So we can move to a different bit.
             king &= (king - 1);
@@ -528,5 +569,14 @@ public class MoveGenerator
     }
 
 
+    public void GenerateAllPseudoLegalMoves(Board board, Move[] moveList, ref int moveCount)
+    {
+        GenerateKnightMoves(board, moveList, ref moveCount);
+        GenerateKingMoves(board, moveList, ref moveCount);
+        GeneratePawnMoves(board, moveList, ref moveCount);
+        GenerateRookMoves(board, moveList, ref moveCount);
+        GenerateBishopMoves(board, moveList, ref moveCount);
+        GenerateQueenMoves(board, moveList, ref moveCount);
+    }
 
 }

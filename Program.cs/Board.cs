@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.Runtime.CompilerServices;
 using System.Xml;
+using System.Numerics;
 
 public struct BoardState
 {
@@ -12,7 +13,12 @@ public struct BoardState
 
 public class Board
 {
-    
+    static Board()
+    {
+        Innit();
+    }
+
+
     public BoardState[] history = new BoardState[1024];
     public int plyCount = 0;
 
@@ -23,7 +29,7 @@ public class Board
     public ulong enPassantSquare;
 
 
-    public static int[] castlingRightsUpdate = new int[64]; //stores bord information for the specific squares for en passant.
+    public static int[] castlingRightsUpdate = new int[64]; //stores bord information for the specific squares for castling.
     static readonly ulong[] rookCastleMasks =
     {
         0b0000000000000000000000000000000000000000000000000000000010100000, // white kingside       Flag = 7     
@@ -118,7 +124,7 @@ public class Board
 
             pieceBitboards[capturedPiece] &= ~targetMask; //Remove the captured piece 
 
-            colorBitboard[colorToMove ^ 1] &= targetMask;
+            colorBitboard[colorToMove ^ 1] &= ~targetMask;
             
         }
         
@@ -149,16 +155,42 @@ public class Board
         if(move.Flag >= (int)Move.MoveFlag.promoteToQueen && move.Flag <= (int)Move.MoveFlag.promoteToBishop)
         {
             //Piece already teleported.
-            //Remove the piece from its bitboard (pawn)
-            pieceBitboards[movingPiece] ^= targetMask;
 
+            
+            /*pieceBitboards[movingPiece] ^= targetMask; //Remove the piece from its bitboard (pawn)
+
+            
 
             int baseIndex = Move.flagToBaseIndex[move.Flag];
             int finalPieceIndex = baseIndex + (colorToMove * 6);
+            pieceOnSquare[move.TargetSquare] = baseIndex + (colorToMove * 6);
 
 
             //Add it to promoted piece bitboard depending upon flag
-            pieceBitboards[finalPieceIndex] |= targetMask;
+            pieceBitboards[finalPieceIndex] |= targetMask;*/
+        
+        
+            ulong startMask1 = (1UL << move.StartSquare);
+            ulong targetMask1 = (1UL << move.TargetSquare);
+            ulong moveMask1 = startMask | targetMask;
+
+            // 1. Completely remove the Pawn from the Start Square
+            pieceBitboards[movingPiece] ^= startMask1;
+
+            // 2. Add the Promoted Piece to the Target Square
+            int baseIndex = Move.flagToBaseIndex[move.Flag];
+            int finalPieceIndex = baseIndex + (colorToMove * 6);
+            pieceBitboards[finalPieceIndex] |= targetMask1;
+
+            // 3. Update global occupancies
+            AllPieces ^= moveMask;
+            colorBitboard[colorToMove] ^= moveMask1;
+
+            // 4. Update the pieceOnSquare array correctly
+            pieceOnSquare[move.StartSquare] = -1; // Clear the start square
+            pieceOnSquare[move.TargetSquare] = finalPieceIndex; // Set the Queen
+        
+        
         }
 
 
@@ -196,20 +228,28 @@ public class Board
 
 
         //teleport the piece / NORMAL MOVE
-        pieceBitboards[movingPiece] ^= moveMask; // teleport the piece
-        AllPieces ^= moveMask; // updates global occupancy
-
-        colorBitboard[colorToMove] ^= moveMask; // update white or black piece bitboard 
-
-
-        pieceOnSquare[move.TargetSquare] = movingPiece;
-        pieceOnSquare[move.StartSquare] = -1;
-
-        if(move.Flag >= (int)Move.MoveFlag.promoteToQueen && move.Flag <= (int)Move.MoveFlag.promoteToBishop)
+        if(move.Flag == 0 || move.Flag > (int)Move.MoveFlag.promoteToBishop)
         {
-            int baseIndex = Move.flagToBaseIndex[move.Flag];
-            pieceOnSquare[move.TargetSquare] = baseIndex + (colorToMove * 6);
+            pieceBitboards[movingPiece] ^= moveMask; // teleport the piece
+        
+            AllPieces ^= moveMask; // updates global occupancy
+
+            colorBitboard[colorToMove] ^= moveMask; // update white or black piece bitboard 
         }
+
+        // pieceBitboards[movingPiece] ^= moveMask; // teleport the piece
+
+        // AllPieces ^= moveMask; // updates global occupancy
+
+        // colorBitboard[colorToMove] ^= moveMask; // update white or black piece bitboard 
+        
+
+        if(move.Flag == 0 || move.Flag > (int)Move.MoveFlag.promoteToBishop)
+        {
+            pieceOnSquare[move.TargetSquare] = movingPiece;
+            pieceOnSquare[move.StartSquare] = -1;
+        }
+       
 
         //Turn switch
         colorToMove ^= 1;
@@ -217,7 +257,7 @@ public class Board
 
     }
 
-    public void UnMakeMove (Move move)
+    public void UnmakeMove (Move move)
     {
 
         colorToMove ^= 1;
@@ -231,6 +271,17 @@ public class Board
         ulong targetMask = (1UL << move.TargetSquare);
 
         int movingPiece = pieceOnSquare[move.TargetSquare];
+
+        //=======================debug====================================
+        // if (move.TargetSquare == 5) // f1 is square index 5
+        // {
+        //     Console.WriteLine($"Unmaking f2f1q. Flag is: {move.Flag}");
+        // }
+        //==========================debug=================================
+
+
+
+
     
         if (move.Flag != 0)
         {
@@ -275,6 +326,13 @@ public class Board
 
 
         ulong moveMask = (1UL << move.StartSquare) | (1UL << move.TargetSquare);
+        
+        
+        // if(move.Flag == 0 || move.Flag > (int)Move.MoveFlag.promoteToBishop)
+        // {
+        //     pieceBitboards[movingPiece] ^= moveMask; // Remove the piece
+        // }
+
         pieceBitboards[movingPiece] ^= moveMask; // Remove the piece
 
         AllPieces ^= moveMask; // Return global occupancy
@@ -290,10 +348,94 @@ public class Board
             pieceBitboards[prevCapturedPiece] |= targetMask;
             AllPieces ^= targetMask;
             colorBitboard[colorToMove ^ 1] ^= targetMask;
+
+
+            pieceOnSquare[move.TargetSquare] = prevCapturedPiece; // place the piece back
         }
 
         
     }
+
+
+    #region UnMakeMove
+
+    // public void UnMakeMove(Move move)
+    // {
+    //     colorToMove ^= 1;
+    //     plyCount--;
+
+    //     int prevCapturedPiece = history[plyCount].capturedPieceType;
+    //     castlingRights = history[plyCount].castlingRights; // Restore state
+    //     enPassantSquare = history[plyCount].enPassantSquare; // Restore state
+
+    //     int movingPiece = -1;
+
+    //     ulong targetMask = (1UL << move.TargetSquare);
+
+    //     for(int i = 0; i<12; i++)
+    //     {
+
+    //         movingPiece = i;
+
+
+    //         if((targetMask & (pieceBitboards[i])) != 0)
+    //         {
+
+    //             if (move.Flag >= (int)Move.MoveFlag.promoteToQueen && move.Flag <= (int)Move.MoveFlag.promoteToBishop) //promotion
+    //             {
+    //                 //Remove the piece from the move.TargetSquare
+    //                 pieceBitboards[i] ^= targetMask;
+
+    //                 //Place the pawn back on the previous square
+    //                 pieceBitboards[(int)Piece.WhitePawns + (colorToMove * 6)] |= targetMask;
+    //                 movingPiece = (int)Piece.WhitePawns + (colorToMove * 6);
+
+
+    //             }
+
+    //             else if(move.Flag >= (int)Move.MoveFlag.whiteKingSideCastle && move.Flag <= (int)Move.MoveFlag.blackQueenSideCastle) //castle
+    //             {
+
+    //                 int rookIndex = (int)Piece.WhiteRooks + (colorToMove * 6);
+    //                 pieceBitboards[rookIndex] ^= rookCastleMasks[move.Flag - 7];
+    //                 AllPieces ^= rookCastleMasks[move.Flag - 7]; // return the global occupancy
+    //                 colorBitboard[colorToMove] ^= rookCastleMasks[move.Flag - 7];
+    //             }
+
+    //             else if(move.Flag == (int)Move.MoveFlag.enPassantCapture) // en passant
+    //             {
+    //                 int pawnTypeToRestore = (colorToMove == 0) ? (int)Piece.BlackPawns : (int)Piece.WhitePawns;
+    //                 ulong enPassantVictimMask = (colorToMove == 0) ? targetMask >> 8 : targetMask << 8;
+    //                 pieceBitboards[pawnTypeToRestore] ^= enPassantVictimMask;
+    //                 AllPieces ^= enPassantVictimMask;
+    //                 colorBitboard[colorToMove ^ 1] ^= enPassantVictimMask;
+    //             }
+
+
+    //             break;
+
+    //         }
+
+    //     }
+
+    //     ulong moveMask = (1UL << move.StartSquare) | (1UL << move.TargetSquare);
+    //     pieceBitboards[movingPiece] ^= moveMask; // Remove the piece
+
+    //     AllPieces ^= moveMask; // Return global occupancy
+    //     colorBitboard[colorToMove] ^= moveMask;
+
+    //     //Put the piece back
+    //     if(prevCapturedPiece != -1)
+    //     {
+    //         pieceBitboards[prevCapturedPiece] |= targetMask;
+    //         AllPieces ^= targetMask;
+    //         colorBitboard[colorToMove ^ 1] ^= targetMask;
+    //     }
+    // }
+
+    #endregion
+
+
 
 
 
@@ -307,8 +449,8 @@ public class Board
 
         int enemyColor = defendingColor ^ 1;
         ulong enemyPawnBitboard = pieceBitboards[(int)Piece.WhitePawns + (enemyColor * 6)]; 
-        ulong pawnMask = AttackTables.pawnAttacks[defendingColor] [square];
-        
+        // ulong pawnMask = AttackTables.pawnAttacks[defendingColor] [square];
+        ulong pawnMask = (defendingColor == 0)? AttackTables.whitePawnAttacks[square] : AttackTables.blackPawnAttacks[square];        
 
 
         if((pawnMask & enemyPawnBitboard) != 0)
@@ -385,6 +527,20 @@ public class Board
         ///  11     1011 - Black kingside castling disabled
         ///   7     0111 - Black queenside castling disabled
         ///   3     0011 - Black castling disabled
+    }
+
+
+    public int GetKingSquare(int color)
+    {
+        // Assuming you have separate bitboards for each king
+        ulong kingBoard = pieceBitboards[(int)Piece.WhiteKing + (color * 6)];
+        if (kingBoard == 0)
+        {
+            // This can happen in analysis if a pseudo-legal move captures the king.
+            // A king bitboard should never be zero in a legal, ongoing game.
+            return -1;
+        }
+        return BitOperations.TrailingZeroCount(kingBoard);
     }
 
 
