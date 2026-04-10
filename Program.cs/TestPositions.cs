@@ -34,4 +34,6 @@ public static class TestPositions
 
     public const string perft8 = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
     public const string perft9 = "r3k2r/p6p/8/B7/1pp1p3/3b4/P6P/R3K2R w KQkq - 0 1";
+    public const string perft10 = "8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1";
+    public const string perft11 = "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1";
 }
