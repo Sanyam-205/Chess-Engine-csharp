@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
+using System.Runtime.CompilerServices;
+using System.Security.Cryptography.X509Certificates;
 using static Board;
 
 class Program
@@ -10,15 +13,24 @@ class Program
         
         Board board = new Board();
         MoveGenerator moveGenerator = new MoveGenerator(); 
+        Search search = new Search();
         Evaluation evaluation = new Evaluation();
-        string fen = "rnb1kb1r/pppppppp/8/8/8/8/PPPP1PPP/1NBQKB1R w Kkq - 0 1";
+
+        string fen = "8/8/2K5/7q/1k6/8/8/6r1 b - - 0 1";
         
         FenUtility.LoadFromFen(fen, board);
-        Console.WriteLine(evaluation.EvaluatePosition(board));
+        // Console.WriteLine(evaluation.EvaluatePosition(board));
         // Console.WriteLine(BitOperations.PopCount(board.pieceBitboards[(int)Piece.WhiteBishops]) - BitOperations.PopCount(board.pieceBitboards[(int)Piece.BlackBishops]));
 
-        
+        int infinity = 9999999;
+        int searchDepth = 6;
 
+        int bestScore = search.NegaMax(board, moveGenerator, evaluation, searchDepth, -infinity, infinity);
+
+        
+        Console.WriteLine($"Best score for this position is {bestScore}");
+        
+        
         
     
     #region particular fen perft check

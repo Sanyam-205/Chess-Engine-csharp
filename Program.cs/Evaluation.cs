@@ -3,6 +3,8 @@ using System.Numerics;
 using static Board;
 public class Evaluation
 {
+
+    static readonly int[] ColorMultiplier = {1, -1};
     public int EvaluatePosition(Board board)
     {
         int score = 
@@ -11,6 +13,8 @@ public class Evaluation
         900 * (BitOperations.PopCount(board.pieceBitboards[(int)Piece.WhiteQueens]) - BitOperations.PopCount(board.pieceBitboards[(int)Piece.BlackQueens])) + 
         500 * (BitOperations.PopCount(board.pieceBitboards[(int)Piece.WhiteRooks]) - BitOperations.PopCount(board.pieceBitboards[(int)Piece.BlackRooks])) + 
         100 * (BitOperations.PopCount(board.pieceBitboards[(int)Piece.WhitePawns]) - BitOperations.PopCount(board.pieceBitboards[(int)Piece.BlackPawns]));
+
+        score *= ColorMultiplier[board.colorToMove];
 
 
         return score;
