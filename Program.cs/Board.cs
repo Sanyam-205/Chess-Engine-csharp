@@ -544,5 +544,11 @@ public class Board
         return BitOperations.TrailingZeroCount(kingBoard);
     }
 
+    public int GetPieceType(int square, Board board)
+    {
+        // does square 
+        return 0;
+    }
+
 
 }

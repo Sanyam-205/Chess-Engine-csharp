@@ -1,9 +1,11 @@
 using System;
 using System.Numerics;
+using System.Text.RegularExpressions;
 using static Board;
 
 public class Search
 {
+    public int nodeCount;
     //alpha is the highest score the AI is guaranteed to achieve. Good for AI
     //beta is the lowest score the opponent can have. Good for human
     /*
@@ -20,8 +22,17 @@ public class Search
     Since at depth 0, the function must return the move order leading to best possible evaluation for you meaning the branch with best Alpha value. 
     
     */
+
+    //debug code
+    public int StartSearch(Board board, MoveGenerator moveGenerator, Evaluation evaluation, int depth, int alpha, int beta)
+    {
+        nodeCount = 0; // Clear the board for the new search
+        return NegaMax(board, moveGenerator, evaluation, depth, alpha, beta);
+    }
+
     public int NegaMax(Board board, MoveGenerator moveGenerator, Evaluation evaluation, int depth, int alpha, int beta) 
     {
+        nodeCount++;//debug code
 
         if (depth == 0) return evaluation.EvaluatePosition(board);
 
@@ -32,9 +43,43 @@ public class Search
 
         int legalMovesPlayed = 0;
 
+        //Populate scores for each move in the moveList array in the same order.
+        int[] moveScore = new int[moveCount];
+        for(int i = 0; i<moveCount; i++)
+        {
+            Move newMove = moveList[i];
+            moveScore[i] = ScoreMove(newMove, board);
+        }
+
+
+        //Apply selection sort to the moveScore array 
+
         //run moves in moveList through the legality check
         for (int i = 0; i < moveCount; i++)
         {
+
+            int bestMoveIndex = i;
+
+            for(int j = i; j < moveCount; j++)
+            {
+                if(moveScore[j] > moveScore[bestMoveIndex])
+                {
+                    bestMoveIndex = j;
+                }  
+            }
+
+            //swap the best move in moveList
+            Move tempMove = moveList[i];
+            moveList[i] = moveList[bestMoveIndex];
+            moveList[bestMoveIndex] = tempMove;
+
+            //swap their scores in moveScore.
+            int temp = moveScore[i];
+            moveScore[i] = moveScore[bestMoveIndex];
+            moveScore[bestMoveIndex] = temp;
+            
+            
+            
             Move move = moveList[i];
             board.MakeMove(move);
 
@@ -87,7 +132,68 @@ public class Search
         return alpha;
     }
 
+    public int ScoreMove(Move move, Board board)
+    {
 
+        // int[] pieceValues = {5, 3, 3, 9, 10000, 1, 5, 3, 3, 9, 10000, 1};
+        int[] pieceTypeMap = {0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5}; //rook, knight, bishop, queen, king, pawn
+
+        if((move.Flag >= (int)Move.MoveFlag.promoteToQueen) && (move.Flag <= (int)Move.MoveFlag.promoteToBishop))
+        {
+            return 500; //Will fine tune this value later.
+        }
+        if((move.Flag >= (int)Move.MoveFlag.whiteKingSideCastle) && (move.Flag <= (int)Move.MoveFlag.blackQueenSideCastle))
+        {
+            return 50; //will fine tune this value later.
+        }
+
+        int movingPiece = board.pieceOnSquare[move.StartSquare];
+        int capturedPieceType = board.pieceOnSquare[move.TargetSquare];
+        //pieceOnSquare stores the piece type for every square. If there is a white queen on index 12 that is e2, then the 12th element in this array would be 3 since 3 is the WhiteQueen value on piece enum.
+
+        if(move.Flag == (int)Move.MoveFlag.enPassantCapture)
+        {
+            capturedPieceType = (int)Board.Piece.WhitePawns + (board.colorToMove^1) * 6;
+        }
+
+        if(capturedPieceType != -1)
+        {
+            int capturedPieceIndex = pieceTypeMap[capturedPieceType];
+            int movingPieceIndex = pieceTypeMap[movingPiece];
+
+            // int capturedPieceValue = pieceValues[capturedPieceType];
+            // int movingPieceValue = pieceValues[movingPiece];
+            
+            // //MVV - LVA. Most valuable capture, least valuable attacker.
+            // //1000 is a base value
+            // // return 1000 + (10 * capturedPieceValue) - movingPieceValue;
+
+            return Evaluation.mvvLva[movingPieceIndex, capturedPieceIndex];
+        }
+        
+
+        return 0;
+    }
+
+    
+
+
+    /*
+    MOVE ORDERING
+
+            Attacker - 
+    Victim               Rook  Knight  Bishop  Queen  King
+                Rook
+                
+                Knight
+
+                Bishop
+
+                Queen
+
+                King
+
+    */
 
 
 }

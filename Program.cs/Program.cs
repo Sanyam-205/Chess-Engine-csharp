@@ -16,8 +16,9 @@ class Program
         Search search = new Search();
         Evaluation evaluation = new Evaluation();
 
-        string fen = "8/8/2K5/7q/1k6/8/8/6r1 b - - 0 1";
+        string fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
         
+        //"8/8/2K5/7q/1k6/8/8/6r1 b - - 0 1"
         FenUtility.LoadFromFen(fen, board);
         // Console.WriteLine(evaluation.EvaluatePosition(board));
         // Console.WriteLine(BitOperations.PopCount(board.pieceBitboards[(int)Piece.WhiteBishops]) - BitOperations.PopCount(board.pieceBitboards[(int)Piece.BlackBishops]));
@@ -25,10 +26,10 @@ class Program
         int infinity = 9999999;
         int searchDepth = 6;
 
-        int bestScore = search.NegaMax(board, moveGenerator, evaluation, searchDepth, -infinity, infinity);
+        search.StartSearch(board, moveGenerator, evaluation, searchDepth, -infinity, infinity);
 
         
-        Console.WriteLine($"Best score for this position is {bestScore}");
+        Console.WriteLine($"Best score for this position is {search.nodeCount}");
         
         
         
