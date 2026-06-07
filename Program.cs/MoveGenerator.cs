@@ -12,57 +12,58 @@ public class MoveGenerator
     ///     2.b.  Moving to that square does not result in our king being in check
     /// To check for condition 2.a, we will use a loop
         
-    // Move[] moveList = new Move[256];
-    // int moveCount = 0;
-    public void GenerateKnightMoves(Board board, Move[] moveList, ref int moveCount)
-    {
 
-        ulong friendlyPieces = (board.colorToMove == 0) ? board.colorBitboard[(int)PieceTeam.WhitePieces] : board.colorBitboard[(int)PieceTeam.BlackPieces];
+    // public void GenerateKnightMoves(Board board, Move[] moveList, ref int moveCount)
+    // {
 
-        /// int knightIndex = (board.colorToMove == 0) ? 1 : 7;
-        /// We could have used an if statement to determine which knight to move but to squeeze out that tiny but of performance we use the same logic we did in our promotion method in Board.cs
-        /// Since white and black pieces are placed exactly 6 indexes apart, and colorToMove is 0 for white and 1 for black, we can add (colorToMove * 6) to our WhiteKnight index. IF color to move is 0 (white's turn), it will remain the same. If colorToMove is 1 (black's turn), then it will add 6 to the index of WhiteKnights giving us BlackKnights.
-        /// ---------------------------------------------------------------------------------------------------------------------------------------
-        /// Clever little workaround that only works because of our Piece enum definition. Changing it will break the logic.
-        /// ---------------------------------------------------------------------------------------------------------------------------------------
-        ulong knights = board.pieceBitboards[(int)Piece.WhiteKnights + (board.colorToMove * 6)]; //make a copy of knights bitboard for operations
+    //     ulong friendlyPieces = (board.colorToMove == 0) ? board.colorBitboard[(int)PieceTeam.WhitePieces] : board.colorBitboard[(int)PieceTeam.BlackPieces];
+
+    //     /// int knightIndex = (board.colorToMove == 0) ? 1 : 7;
+    //     /// We could have used an if statement to determine which knight to move but to squeeze out that tiny but of performance we use the same logic we did in our promotion method in Board.cs
+    //     /// Since white and black pieces are placed exactly 6 indexes apart, and colorToMove is 0 for white and 1 for black, we can add (colorToMove * 6) to our WhiteKnight index. IF color to move is 0 (white's turn), it will remain the same. If colorToMove is 1 (black's turn), then it will add 6 to the index of WhiteKnights giving us BlackKnights.
+    //     /// ---------------------------------------------------------------------------------------------------------------------------------------
+    //     /// Clever little workaround that only works because of our Piece enum definition. Changing it will break the logic.
+    //     /// ---------------------------------------------------------------------------------------------------------------------------------------
+    //     ulong knights = board.pieceBitboards[(int)Piece.WhiteKnights + (board.colorToMove * 6)]; //make a copy of knights bitboard for operations
         
-        while (knights != 0)
-        {
-            /// TrailingZeroCount gives us the address of the LSB or the 1st bit in the ulong
-            /// If our ulong knights = 0000000000100001;
-            /// in first iteration it will give 10. On second iteration of the loop it will give 14
-            int square = BitOperations.TrailingZeroCount(knights);
+    //     while (knights != 0)
+    //     {
+    //         /// TrailingZeroCount gives us the address of the LSB or the 1st bit in the ulong
+    //         /// If our ulong knights = 0000000000100001;
+    //         /// in first iteration it will give 10. On second iteration of the loop it will give 14
+    //         int square = BitOperations.TrailingZeroCount(knights);
             
-            /// ~friendlyPieces inverts the bits of friendly pieces giving us all the squares not occupied by a friendly piece.
-            /// &~ will give us all the squares a knight go to by using knightAttacks and inverse of friendlyPieces.
-            /// Essentially, all squares a knight on 'square' index can go to minus the squares already occupied by friendly pieces.
-            ulong pseudoLegalMoves = AttackTables.knightAttacks[square] & ~friendlyPieces;
+    //         /// ~friendlyPieces inverts the bits of friendly pieces giving us all the squares not occupied by a friendly piece.
+    //         /// &~ will give us all the squares a knight go to by using knightAttacks and inverse of friendlyPieces.
+    //         /// Essentially, all squares a knight on 'square' index can go to minus the squares already occupied by friendly pieces.
+    //         ulong pseudoLegalMoves = AttackTables.knightAttacks[square] & ~friendlyPieces;
             
-            // We now have a bitboard (pseudoLegalMoves) of all valid target squares!
+    //         // We now have a bitboard (pseudoLegalMoves) of all valid target squares!
             
-            while(pseudoLegalMoves != 0)
-            {
-                // Stores the integer for each pseudo legal move.
-                int targetSquare = BitOperations.TrailingZeroCount(pseudoLegalMoves);   
+    //         while(pseudoLegalMoves != 0)
+    //         {
+    //             // Stores the integer for each pseudo legal move.
+    //             int targetSquare = BitOperations.TrailingZeroCount(pseudoLegalMoves);   
 
-                Move newMove = new Move(square ,targetSquare);
+    //             Move newMove = new Move(square ,targetSquare);
                 
-                moveList[moveCount++] = newMove;
-                // Directly implementing moveCount++ inside the array is a cleaner way of incrementing it after filling it out.
+    //             moveList[moveCount++] = newMove;
+    //             // Directly implementing moveCount++ inside the array is a cleaner way of incrementing it after filling it out.
 
-                // Removes the bit we just worked on from ulong,
-                pseudoLegalMoves &= (pseudoLegalMoves -1); 
-            }
+    //             // Removes the bit we just worked on from ulong,
+    //             pseudoLegalMoves &= (pseudoLegalMoves -1); 
+    //         }
             
-            // 3. This removes the knight from the knights ulong by removing 1 from the LSB. So we can move to a different bit.
-            knights &= (knights - 1);
-        }
-    }
+    //         // 3. This removes the knight from the knights ulong by removing 1 from the LSB. So we can move to a different bit.
+    //         knights &= (knights - 1);
+    //     }
+    // }
     
-    public void GenerateRookMoves(Board board, Move[] moveList, ref int moveCount)
+    public void GenerateRookMoves(Board board, Move[] moveList, ref int moveCount, bool capturesOnly = false)
     {
         ulong friendlyPieces = (board.colorToMove == 0) ? board.colorBitboard[(int)PieceTeam.WhitePieces] : board.colorBitboard[(int)PieceTeam.BlackPieces];
+        
+        ulong enemyPieces = (board.colorToMove == 1) ? board.colorBitboard[(int)PieceTeam.WhitePieces] : board.colorBitboard[(int)PieceTeam.BlackPieces];
 
         ulong rooks = board.pieceBitboards[(int)Piece.WhiteRooks + board.colorToMove * 6];
 
@@ -74,7 +75,17 @@ public class MoveGenerator
        
             ulong rawAttacks = AttackTables.GetRookAttacks(square, board.AllPieces);
 
-            ulong pseudoLegalMoves = rawAttacks & ~friendlyPieces;
+            // ulong pseudoLegalMoves = rawAttacks & ~friendlyPieces;
+            ulong pseudoLegalMoves = rawAttacks;
+
+            if(capturesOnly)
+            {
+                pseudoLegalMoves &= enemyPieces;
+            }
+            else
+            {
+                pseudoLegalMoves &= ~friendlyPieces;
+            }
         
             while(pseudoLegalMoves != 0)
             {
@@ -92,9 +103,11 @@ public class MoveGenerator
         
     }
 
-    public void GenerateBishopMoves(Board board, Move[] moveList, ref int moveCount)
+    public void GenerateBishopMoves(Board board, Move[] moveList, ref int moveCount, bool capturesOnly = false)
     {
         ulong friendlyPieces = (board.colorToMove == 0) ? board.colorBitboard[(int)PieceTeam.WhitePieces] : board.colorBitboard[(int)PieceTeam.BlackPieces];
+       
+        ulong enemyPieces =(board.colorToMove == 0) ? board.colorBitboard[(int)PieceTeam.BlackPieces] : board.colorBitboard[(int)PieceTeam.WhitePieces];
 
         ulong bishops = board.pieceBitboards[(int)Piece.WhiteBishops + board.colorToMove * 6];
 
@@ -104,7 +117,17 @@ public class MoveGenerator
 
             ulong rawAttacks = AttackTables.GetBishopAttacks(square, board.AllPieces);
 
-            ulong pseudoLegalMoves = rawAttacks & ~friendlyPieces;
+            // ulong pseudoLegalMoves = rawAttacks & ~friendlyPieces;
+            ulong pseudoLegalMoves = rawAttacks;
+
+            if(capturesOnly)
+            {
+                pseudoLegalMoves &= enemyPieces;
+            }
+            else
+            {
+                pseudoLegalMoves &= ~friendlyPieces;
+            }
 
             while(pseudoLegalMoves != 0)
             {
@@ -121,9 +144,11 @@ public class MoveGenerator
     }
 
 
-    public void GenerateQueenMoves(Board board, Move[] moveList, ref int moveCount)
+    public void GenerateQueenMoves(Board board, Move[] moveList, ref int moveCount, bool capturesOnly = false)
     {
         ulong friendlyPieces = (board.colorToMove == 0) ? board.colorBitboard[(int)PieceTeam.WhitePieces] : board.colorBitboard[(int)PieceTeam.BlackPieces];
+        
+        ulong enemyPieces = (board.colorToMove == 1) ? board.colorBitboard[(int)PieceTeam.WhitePieces] : board.colorBitboard[(int)PieceTeam.BlackPieces];
 
         ulong queens = board.pieceBitboards[(int)Piece.WhiteQueens + board.colorToMove * 6];
 
@@ -133,7 +158,19 @@ public class MoveGenerator
         {
             int square = BitOperations.TrailingZeroCount(queens);
             ulong rawAttacks = AttackTables.GetQueenAttacks(square, board.AllPieces);
-            ulong pseudoLegalMoves = rawAttacks & ~friendlyPieces;
+            // ulong pseudoLegalMoves = rawAttacks & ~friendlyPieces;
+            
+            ulong pseudoLegalMoves = rawAttacks;
+
+            if(capturesOnly)
+            {
+                pseudoLegalMoves &= enemyPieces;
+            }
+
+            else
+            {
+                pseudoLegalMoves &= ~friendlyPieces;
+            }
             
 
             while(pseudoLegalMoves!= 0)
@@ -150,10 +187,11 @@ public class MoveGenerator
         }
 
     }
-    public void GenerateKingMoves(Board board, Move[] moveList, ref int moveCount)
+    public void GenerateKingMoves(Board board, Move[] moveList, ref int moveCount, bool capturesOnly = false)
     {
 
         ulong friendlyPieces = (board.colorToMove == 0) ? board.colorBitboard[(int)PieceTeam.WhitePieces] : board.colorBitboard[(int)PieceTeam.BlackPieces];
+        ulong enemyPieces = (board.colorToMove == 1) ? board.colorBitboard[(int)PieceTeam.WhitePieces] : board.colorBitboard[(int)PieceTeam.BlackPieces];
 
         /// int kingIndex = (board.colorToMove == 0) ? 4 : 10;
         /// We could have used an if statement to determine which knight to move but to squeeze out that tiny but of performance we use the same logic we did in our promotion method in Board.cs
@@ -173,7 +211,18 @@ public class MoveGenerator
             /// ~friendlyPieces inverts the bits of friendly pieces giving us all the squares not occupied by a friendly piece.
             /// &~ will give us all the squares a king go to by using kingAttacks and inverse of friendlyPieces.
             /// Essentially, all squares a king on 'square' index can go to minus the squares already occupied by friendly pieces.
-            ulong pseudoLegalMoves = AttackTables.kingAttacks[square] & ~friendlyPieces;
+            ulong pseudoLegalMoves = AttackTables.kingAttacks[square];
+
+            if(capturesOnly)
+            {
+                pseudoLegalMoves &= enemyPieces;
+            }
+            else
+            {
+                pseudoLegalMoves &= ~friendlyPieces;
+            }
+
+
             
             // We now have a bitboard (pseudoLegalMoves) of all valid target squares!
             
@@ -238,7 +287,7 @@ public class MoveGenerator
 
 
 
-    public void GeneratePawnMoves(Board board, Move[] moveList, ref int moveCount)
+    public void GeneratePawnMoves(Board board, Move[] moveList, ref int moveCount, bool capturesOnly = false)
     {
         ulong enemyPieces = (board.colorToMove == 0) ? board.colorBitboard[(int)PieceTeam.BlackPieces] : board.colorBitboard[(int)PieceTeam.WhitePieces];
 
@@ -302,7 +351,8 @@ public class MoveGenerator
             /// For calculating white double push, we shift the previously calculated single push by 8. We do not directly shift pawns by 16 because that would result in a pawn on starting rank jumping 2 squares even if its path is blocked.
             /// 16711680 is 3rd rank. Same technique we used in generating attack tables. 
             
-
+        if(!capturesOnly)
+        {
             while(whiteSinglePush != 0) //single push
             {
                 // Trace the starting square
@@ -325,7 +375,9 @@ public class MoveGenerator
 
                 whiteDoublePush &= (whiteDoublePush-1);   
             }
+        }    
 
+           
             while(whitePromotionPush != 0) //promotion push
             {
                 int targetSquare = BitOperations.TrailingZeroCount(whitePromotionPush);
@@ -338,6 +390,8 @@ public class MoveGenerator
 
                 whitePromotionPush &= (whitePromotionPush - 1);
             }
+
+
             
             
             //Pawn Captures
@@ -445,6 +499,8 @@ public class MoveGenerator
 
             ulong blackPromotionPush = (blackPromotingPawns >> 8) & ~board.AllPieces;
 
+        if(!capturesOnly)
+        {
             while(blackSinglePush != 0) //black single push
             {
                 // Trace the starting square
@@ -468,6 +524,7 @@ public class MoveGenerator
 
                 blackDoublePush &= (blackDoublePush-1);
             }
+        }
        
             while(blackPromotionPush != 0)
             {
@@ -482,6 +539,7 @@ public class MoveGenerator
                 blackPromotionPush &= (blackPromotionPush - 1);
                 
             }
+           
 
             ulong blackRightCapture = ((blackStandardPawns & notHFile) >> 7) & enemyPieces;
             ulong blackLeftCapture =  ((blackStandardPawns & notAFile) >> 9) & enemyPieces;
@@ -577,6 +635,72 @@ public class MoveGenerator
         GenerateRookMoves(board, moveList, ref moveCount);
         GenerateBishopMoves(board, moveList, ref moveCount);
         GenerateQueenMoves(board, moveList, ref moveCount);
+    }
+    public void GenerateAllPseudoLegalCaptures(Board board, Move[] moveList, ref int moveCount)
+    {
+        GenerateKnightMoves(board, moveList, ref moveCount, true);
+        GenerateKingMoves  (board, moveList, ref moveCount, true);
+        GeneratePawnMoves  (board, moveList, ref moveCount, true);
+        GenerateRookMoves  (board, moveList, ref moveCount, true);
+        GenerateBishopMoves(board, moveList, ref moveCount, true);
+        GenerateQueenMoves (board, moveList, ref moveCount, true);
+    }
+
+    public void GenerateKnightMoves(Board board, Move[] moveList, ref int moveCount, bool capturesOnly = false)
+    {
+
+        ulong friendlyPieces = (board.colorToMove == 0) ? board.colorBitboard[(int)PieceTeam.WhitePieces] : board.colorBitboard[(int)PieceTeam.BlackPieces];
+
+        ulong enemyPieces = (board.colorToMove == 1) ? board.colorBitboard[(int)PieceTeam.WhitePieces] : board.colorBitboard[(int)PieceTeam.BlackPieces];
+
+        /// int knightIndex = (board.colorToMove == 0) ? 1 : 7;
+        /// We could have used an if statement to determine which knight to move but to squeeze out that tiny but of performance we use the same logic we did in our promotion method in Board.cs
+        /// Since white and black pieces are placed exactly 6 indexes apart, and colorToMove is 0 for white and 1 for black, we can add (colorToMove * 6) to our WhiteKnight index. IF color to move is 0 (white's turn), it will remain the same. If colorToMove is 1 (black's turn), then it will add 6 to the index of WhiteKnights giving us BlackKnights.
+        /// ---------------------------------------------------------------------------------------------------------------------------------------
+        /// Clever little workaround that only works because of our Piece enum definition. Changing it will break the logic.
+        /// ---------------------------------------------------------------------------------------------------------------------------------------
+        ulong knights = board.pieceBitboards[(int)Piece.WhiteKnights + (board.colorToMove * 6)]; //make a copy of knights bitboard for operations
+        
+        while (knights != 0)
+        {
+            /// TrailingZeroCount gives us the address of the LSB or the 1st bit in the ulong
+            /// If our ulong knights = 0000000000100001;
+            /// in first iteration it will give 10. On second iteration of the loop it will give 14
+            int square = BitOperations.TrailingZeroCount(knights);
+            
+            ulong pseudoLegalMoves = AttackTables.knightAttacks[square];
+
+            if(capturesOnly)
+            {
+                pseudoLegalMoves &= enemyPieces;
+            }
+            
+            /// ~friendlyPieces inverts the bits of friendly pieces giving us all the squares not occupied by a friendly piece.
+            /// &~ will give us all the squares a knight go to by using knightAttacks and inverse of friendlyPieces.
+            /// Essentially, all squares a knight on 'square' index can go to minus the squares already occupied by friendly pieces.
+            else
+            {
+                pseudoLegalMoves &= ~friendlyPieces;
+            }
+            // We now have a bitboard (pseudoLegalMoves) of all valid target squares!
+            
+            while(pseudoLegalMoves != 0)
+            {
+                // Stores the integer for each pseudo legal move.
+                int targetSquare = BitOperations.TrailingZeroCount(pseudoLegalMoves);   
+
+                Move newMove = new Move(square ,targetSquare);
+                
+                moveList[moveCount++] = newMove;
+                // Directly implementing moveCount++ inside the array is a cleaner way of incrementing it after filling it out.
+
+                // Removes the bit we just worked on from ulong,
+                pseudoLegalMoves &= (pseudoLegalMoves -1); 
+            }
+            
+            // 3. This removes the knight from the knights ulong by removing 1 from the LSB. So we can move to a different bit.
+            knights &= (knights - 1);
+        }
     }
 
 }

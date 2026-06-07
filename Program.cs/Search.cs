@@ -14,10 +14,11 @@ public class Search
                3       1
               / \     / \
             -1   3  -5   1          
-    White to move. +ve value= = better for white. -ve value = better for black. This is standard mimimax. Negamax is slightly different which will be explained later.
+    White to move. +ve value= = better for white. -ve value = better for black. This is standard mimimax.
     
     In this example, for branch A, alpha is 3 which is the best score for white and beta is -1, the best score for black.
     For branch B, alpha is 1, the best score for white and beta is -5, the best score for black. We always assume that the opponent makes the best move for them leading to highest beta value.
+    Beta is the maximum score the opponent will allow us to get
     Beta can also be explained as the absolute best score we can have for that particular branch. For example, if -1 and -5 both continued downwards, these two scores would be the absolute best we would be looking to get if we went down those paths.
     Since at depth 0, the function must return the move order leading to best possible evaluation for you meaning the branch with best Alpha value. 
     
@@ -59,7 +60,8 @@ public class Search
         {
             leafCount++;
             // pvLength[ply] = 0; //signifies the search function finished searching
-            return evaluation.EvaluatePosition(board);
+            // return evaluation.EvaluatePosition(board);
+            return Quiescence(board, moveGenerator, evaluation, alpha, beta);
         }
         //Populate moveList with pseudolegal moves
         Move[] moveList = new Move[256];
@@ -178,6 +180,80 @@ public class Search
         // {
         //     Console.WriteLine($"[DEBUG] Exiting Root: PV Length is {pvLength[0]}, Best move in array is {pvTable[0,0].StartSquare}, {pvTable[0,0].TargetSquare}");
         // }
+
+        return alpha;
+    }
+
+
+
+    //Quiescence function
+    public int Quiescence(Board board, MoveGenerator moveGenerator, Evaluation evaluation, int alpha, int beta)
+    {
+        int standPat = evaluation.EvaluatePosition(board);
+        if(standPat >= beta) return beta;
+
+        //alpha = max of alpha, standPat
+        alpha = (alpha > standPat) ? alpha : standPat;
+
+        Move[] moveList = new Move[256];
+        int moveCount = 0;
+        moveGenerator.GenerateAllPseudoLegalCaptures(board, moveList, ref moveCount);
+
+        int legalMovesPlayed = 0;
+
+        int[] moveScore = new int[moveCount];
+        for(int i = 0; i<moveCount; i++)
+        {
+            Move newMove = moveList[i];
+            moveScore[i] = ScoreMove(newMove, board);
+        }
+
+        for(int i = 0; i<moveCount; i++)
+        {
+            int bestMoveIndex = i;
+
+            for(int j = i; j < moveCount; j++)
+            {
+                if(moveScore[j] > moveScore[bestMoveIndex])
+                {
+                    bestMoveIndex = j;
+                }
+            }
+
+            Move tempMove = moveList[i];
+            moveList[i] = moveList[bestMoveIndex];
+            moveList[bestMoveIndex] = tempMove;
+
+            int temp = moveScore[i];
+            moveScore[i] = moveScore[bestMoveIndex];
+            moveScore[bestMoveIndex] = temp;
+
+            Move move = moveList[i];
+            board.MakeMove(move);
+            int colorThatJustMoved = board.colorToMove ^ 1;
+            int kingSquare = board.GetKingSquare(colorThatJustMoved);
+
+            if((kingSquare!= -1) && board.IsSquareAttacked(kingSquare, colorThatJustMoved))
+            {
+                board.UnmakeMove(move);
+                continue;
+            }
+            legalMovesPlayed++;
+
+            int score = -Quiescence(board, moveGenerator, evaluation, -beta, -alpha);
+        
+            board.UnmakeMove(move);
+
+            if(score>=beta)
+            {
+                return score; //cutoff
+            }
+
+            if(score > alpha)
+            {
+                alpha = score;
+            }
+        }
 
         return alpha;
     }

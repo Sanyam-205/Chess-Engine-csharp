@@ -25,8 +25,8 @@ class Program
         // fen3 - scillian defense
         // fen13 - endgame (mine)
 
-        string fen = TestPositions.fen13;
-        // string fen1 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1";
+        string fen = TestPositions.fen0;
+        // string fen1 = "1R2r2k/2P3p1/7p/1p1p4/1P6/5P2/1P3PKP/8 b - - 0 26";
         
         //"8/8/2K5/7q/1k6/8/8/6r1 b - - 0 1"
         FenUtility.LoadFromFen(fen, board);
@@ -53,7 +53,13 @@ class Program
         int infinity = 9999999;
         int searchDepth = 6;
 
+        Stopwatch stopwatch = new Stopwatch();
+
+        stopwatch.Start();
         int bestEval = search.NegaMax(board, moveGenerator, evaluation, searchDepth, -infinity, infinity, 0);
+        stopwatch.Stop();
+        Console.WriteLine($"Time taken  : {stopwatch.Elapsed.TotalMilliseconds:F2} ms");
+        Console.WriteLine($"Total nodes = {search.nodeCount}");
         Console.WriteLine(bestEval);
         search.PrintPrincipalVariation();
         
