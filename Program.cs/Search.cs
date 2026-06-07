@@ -23,21 +23,42 @@ public class Search
     
     */
 
+    Move[,] pvTable = new Move[64,64]; //fixed 2d array to store the move and depth score.
+    int[] pvLength = new int[64]; //need to track how long the move sequence is at each depth so it can be copied downward at the next depth level
+
+    /* A principal variation table is used to store the sequence of moves that will result in the best move for that depth. At depth 6, the alpha value (score) will show the evaluation after the board has reached that particular stage. The root node is the final move at that particular depth. We need to store the sequence of moves. Here's how we do it.
+    A 2d array in which, one element referes to the depth value as depth decreases in each recursive call of the loop and another sotring the best move found.
+    Lets say, the best sequence of moves for a position is this -> e2e4, e7e5, d2d4, d7d5, g1f3, b8c6. The pvTable will look like this -
+    depth    move sequence
+      6      .e2e4
+      5      .e2e4 .e7e5
+      4      .e2e4 .e7e5 .d2d4 
+      3      .e2e4 .e7e5 .d2d4 .d7d5 
+      2      .e2e4 .e7e5 .d2d4 .d7d5 .g1f3
+      1      .e2e4 .e7e5 .d2d4 .d7d5 .g1f3 .b8c6
+    *If we were only storing the root node, it will just give is b8c6*
+
+    To copy the content of the previous depth onto the next depth, we need another pvLength table.
+    */
+
     //debug code
-    public int StartSearch(Board board, MoveGenerator moveGenerator, Evaluation evaluation, int depth, int alpha, int beta)
+    public int StartSearch(Board board, MoveGenerator moveGenerator, Evaluation evaluation, int depth, int alpha, int beta, int ply)
     {
         nodeCount = 0; // Clear the board for the new search
         leafCount = 0;
-        return NegaMax(board, moveGenerator, evaluation, depth, alpha, beta);
+        return NegaMax(board, moveGenerator, evaluation, depth, alpha, beta, ply);
     }
 
-    public int NegaMax(Board board, MoveGenerator moveGenerator, Evaluation evaluation, int depth, int alpha, int beta) 
+    public int NegaMax(Board board, MoveGenerator moveGenerator, Evaluation evaluation, int depth, int alpha, int beta, int ply) 
     {
         nodeCount++;//debug code
+        
+        pvLength[ply] = 0; //set it to 0 for each recursive call.
 
         if (depth == 0) 
         {
             leafCount++;
+            // pvLength[ply] = 0; //signifies the search function finished searching
             return evaluation.EvaluatePosition(board);
         }
         //Populate moveList with pseudolegal moves
@@ -61,9 +82,7 @@ public class Search
         //run moves in moveList through the legality check
         for (int i = 0; i < moveCount; i++)
         {
-            //Selection sort
-        #region selection sort    
-            
+            //Selection sort           
             
             int bestMoveIndex = i;
 
@@ -85,9 +104,7 @@ public class Search
             moveScore[i] = moveScore[bestMoveIndex];
             moveScore[bestMoveIndex] = temp;
         
-        
-        
-        #endregion    
+
             
             // continuation of search
             Move move = moveList[i];
@@ -106,13 +123,11 @@ public class Search
             legalMovesPlayed++;
 
             //Recursive call for lower depth.
-            int score = -NegaMax(board, moveGenerator, evaluation, depth - 1, -beta, -alpha);
+            int score = -NegaMax(board, moveGenerator, evaluation, depth - 1, -beta, -alpha, ply+1);
         
             board.UnmakeMove(move);
 
             //Alpha-Beta pruning
-        #region alpha beta pruning
-
             if (score >= beta) 
             {
                 return score; //If this branch leads to a worse outcome, do not consider it. Return beta and get out of the path.
@@ -121,9 +136,25 @@ public class Search
             if (score > alpha) 
             {
                 alpha = score; //We found a better move for ourselves
+             
+                //debug
+                // if (ply == 0)
+                // {
+                //     Console.WriteLine($"Root updating PV: Move is {move.StartSquare} to {move.TargetSquare}, Score is {score}");
+                // } 
+
+                pvTable[ply, 0] = move;
+
+                // 2. Copy the sequence of moves from the deeper ply
+                for (int j = 0; j < pvLength[ply + 1]; j++)
+                {
+                    pvTable[ply, j + 1] = pvTable[ply + 1, j];
+                }
+
+                // 3. Update the length of the sequence for this ply
+                pvLength[ply] = pvLength[ply + 1] + 1;
             }
 
-        #endregion    
 
         }
 
@@ -143,8 +174,28 @@ public class Search
             }
         }
 
+        // if (ply == 0)
+        // {
+        //     Console.WriteLine($"[DEBUG] Exiting Root: PV Length is {pvLength[0]}, Best move in array is {pvTable[0,0].StartSquare}, {pvTable[0,0].TargetSquare}");
+        // }
+
         return alpha;
     }
+
+
+    //Helper function
+    public void PrintPrincipalVariation()
+    {
+        Console.Write("Best Line: ");
+        for (int i = 0; i < pvLength[0]; i++)
+        { 
+            // Console.Write((pvTable[0,i].StartSquare) + "," + (pvTable[0,i].TargetSquare));
+            Console.Write(BoardUtility.MoveToUci(pvTable[0,i]) + " ");
+        }
+        Console.WriteLine();
+    }
+
+
 
     public int ScoreMove(Move move, Board board)
     {

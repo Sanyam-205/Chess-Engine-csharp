@@ -25,34 +25,57 @@ class Program
         // fen3 - scillian defense
         // fen13 - endgame (mine)
 
-        string fen = TestPositions.fen0;
+        string fen = TestPositions.fen13;
         // string fen1 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1";
         
         //"8/8/2K5/7q/1k6/8/8/6r1 b - - 0 1"
         FenUtility.LoadFromFen(fen, board);
-        Console.WriteLine(evaluation.EvaluatePosition(board));
+        // Console.WriteLine(evaluation.EvaluatePosition(board));
 
-        Move move1 = new Move(12,20);
-        board.MakeMove(move1);
-        BoardPrinter.PrintBitboard(board);
-        Console.WriteLine($"Evaluation after move 1 : {evaluation.EvaluatePosition(board)}");
+        // Move move1 = new Move(12,20);
+        // board.MakeMove(move1);
+        // BoardPrinter.PrintBitboard(board);
+        // Console.WriteLine($"Evaluation after move 1 : {evaluation.EvaluatePosition(board)}");
 
-        Move move2 = new Move(57,42);
-        board.MakeMove(move2);
-        BoardPrinter.PrintBitboard(board);
-        Console.WriteLine($"Evaluation after move 2 : {evaluation.EvaluatePosition(board)}");
+        // Move move2 = new Move(57,42);
+        // board.MakeMove(move2);
+        // BoardPrinter.PrintBitboard(board);
+        // Console.WriteLine($"Evaluation after move 2 : {evaluation.EvaluatePosition(board)}");
         
-        Move move3 = new Move(11,19);
-        board.MakeMove(move3);
-        BoardPrinter.PrintBitboard(board);
-        Console.WriteLine($"Evaluation after move 3 : {evaluation.EvaluatePosition(board)}");
+        // Move move3 = new Move(11,19);
+        // board.MakeMove(move3);
+        // BoardPrinter.PrintBitboard(board);
+        // Console.WriteLine($"Evaluation after move 3 : {evaluation.EvaluatePosition(board)}");
         
+        BoardPrinter.PrintBitboard(board);
+        Console.WriteLine(board.colorToMove);
 
-        // int infinity = 9999999;
-        // int searchDepth = 6;
+        int infinity = 9999999;
+        int searchDepth = 6;
 
+        int bestEval = search.NegaMax(board, moveGenerator, evaluation, searchDepth, -infinity, infinity, 0);
+        Console.WriteLine(bestEval);
+        search.PrintPrincipalVariation();
+        
+        
+        // Move move = new Move(12,28,0);
+        // board.MakeMove(move);
+        // BoardPrinter.PrintBitboard(board);
+        // Console.WriteLine(board.colorToMove);
+        
+        // for(int i = 0; i<5; i++)
+        // {
+        //     Console.WriteLine("Enter move :");
+        //     string moveString = Console.ReadLine();
+            
+        //     board.MakeMove(MoveUtility.MoveFromName(moveString));
+        //     Console.WriteLine($"Evaluation : {evaluation.EvaluatePosition(board)}");
+        //     BoardPrinter.PrintBitboard(board);
+        //     Console.WriteLine();
+
+        // }
+        
         // Stopwatch stopwatch = Stopwatch.StartNew();
-        
 
         // for (int i = 0; i < 100; i++)
         // {
