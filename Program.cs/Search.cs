@@ -62,6 +62,7 @@ public class Search
             leafCount++;
             // pvLength[ply] = 0; //signifies the search function finished searching
             // return evaluation.EvaluatePosition(board);
+            // Console.WriteLine($"NegaMax just played: {pvTable[0,0].StartSquare} -> {pvTable[0,0].TargetSquare}");
             return Quiescence(board, moveGenerator, evaluation, alpha, beta, ply);
         }
         //Populate moveList with pseudolegal moves
@@ -70,6 +71,7 @@ public class Search
         moveGenerator.GenerateAllPseudoLegalMoves(board, moveList, ref moveCount);
 
         int legalMovesPlayed = 0;
+
 
         //Populate scores for each move in the moveList array in the same order.
         int[] moveScore = new int[moveCount];
@@ -111,6 +113,52 @@ public class Search
             
             // continuation of search
             Move move = moveList[i];
+
+
+#region debug
+
+    // int startSq = move.StartSquare;
+    // int targetSq = move.TargetSquare;
+    // int originalStartPiece = board.pieceOnSquare[startSq];
+    // int originalTargetPiece = board.pieceOnSquare[targetSq];
+// if (board.pieceOnSquare[move.StartSquare] == -1)
+// {
+//     Console.WriteLine("=================================");
+//     Console.WriteLine("FATAL DESYNC CAUGHT BEFORE MAKEMOVE!");
+//     Console.WriteLine($"MoveGen generated a move for square {move.StartSquare}, {move.TargetSquare}, but pieceOnSquare says it is empty.");
+    
+//     if (i > 0) 
+//     {
+//         Console.WriteLine($"The culprit is the PREVIOUS move in this loop: Iteration {i-1}");
+//         Console.WriteLine($"Previous move - {moveList[i-1].StartSquare}, {moveList[i-1].TargetSquare}");
+//         // If your Move struct has a way to print the square/value, print moveList[i-1] here to see what it was.
+//     }
+//     else 
+//     {
+//         Console.WriteLine("The corruption happened in a deeper recursive call before this loop started in negamax");
+//         for (int z = 0; z < 64; z++)
+//         {
+//             if(board.pieceOnSquare[z]== 0)
+//             {
+//             Console.Write(board.pieceOnSquare[z] + "\t");
+
+//             if ((z + 1) % 8 == 0)
+//             {
+//                 Console.WriteLine();
+//             }}
+//         }
+//     }
+    
+//     Console.WriteLine("=================================");
+//     Console.Out.Flush();
+//     Environment.Exit(1);
+// }
+
+#endregion
+
+
+
+
             board.MakeMove(move);
 
             int colorThatJustMoved = board.colorToMove ^ 1;
@@ -120,6 +168,8 @@ public class Search
             if (kingSquare != -1 && board.IsSquareAttacked(kingSquare, colorThatJustMoved))
             {
                 board.UnmakeMove(move);
+
+
                 continue; 
             }
 
@@ -129,6 +179,7 @@ public class Search
             int score = -NegaMax(board, moveGenerator, evaluation, depth - 1, -beta, -alpha, ply+1);
         
             board.UnmakeMove(move);
+
 
             //Alpha-Beta pruning
             if (score >= beta) 
@@ -366,6 +417,44 @@ public class Search
             moveScore[bestMoveIndex] = temp;
 
             Move move = moveList[i];
+
+#region debug
+
+
+// if (board.pieceOnSquare[move.StartSquare] == -1)
+// {
+//     Console.WriteLine("=================================");
+//     Console.WriteLine("FATAL DESYNC CAUGHT BEFORE MAKEMOVE!");
+//     Console.WriteLine($"MoveGen generated a move for square {move.StartSquare}, {move.TargetSquare}, but pieceOnSquare says it is empty.");
+    
+//     if (i > 0) 
+//     {
+//         Console.WriteLine($"The culprit is the PREVIOUS move in this loop: Iteration {i-1}");
+//         // If your Move struct has a way to print the square/value, print moveList[i-1] here to see what it was.
+//     }
+//     else 
+//     {
+//         Console.WriteLine("The corruption happened in a deeper recursive call before this loop started in quiescence");
+//         for (int z = 0; z < 64; z++)
+//         {
+//             Console.Write(board.pieceOnSquare[z] + "\t");
+
+//             if ((z + 1) % 8 == 0)
+//             {
+//                 Console.WriteLine();
+//             }
+//         }
+//     }
+    
+//     Console.WriteLine("=================================");
+//     Console.Out.Flush();
+//     Environment.Exit(1);
+// }
+#endregion
+
+
+
+
             board.MakeMove(move);
             int colorThatJustMoved = board.colorToMove ^ 1;
             int kingSquareAfterMove = board.GetKingSquare(colorThatJustMoved);
@@ -373,6 +462,8 @@ public class Search
             if ((kingSquareAfterMove != -1) && board.IsSquareAttacked(kingSquareAfterMove, colorThatJustMoved))
             {
                 board.UnmakeMove(move);
+
+
                 continue; //Move is illegal, skip that index and continue the for loop from next index (move)
             }
             legalMovesPlayed++;
@@ -380,6 +471,7 @@ public class Search
             int score = -Quiescence(board, moveGenerator, evaluation, -beta, -alpha, ply + 1);
 
             board.UnmakeMove(move);
+
 
             //alpha beta pruning
             if(score >= beta)
@@ -391,15 +483,6 @@ public class Search
             {
                 alpha = score; //found a better guaranteed path/move. Update alpha
             
-                // pvTable[ply, ply] = move;
-                // // 2. Loop through and copy the child node's PV into our current PV
-                // for (int nextPly = ply + 1; nextPly < pvLength[ply + 1]; nextPly++)
-                // {
-                //     pvTable[ply, nextPly] = pvTable[ply + 1, nextPly];
-                // }
-                
-                // // 3. Update the length of the PV for the current ply
-                // pvLength[ply] = pvLength[ply + 1];
 
                 pvTable[ply, 0] = move;
 

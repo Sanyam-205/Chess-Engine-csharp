@@ -1,4 +1,3 @@
-
 using System;
 using System.Drawing;
 using System.Runtime.CompilerServices;
@@ -90,6 +89,8 @@ public class Board
     
     public void MakeMove(Move move)
     {
+
+        // Console.WriteLine($"MakeMove Called: Start = {move.StartSquare}, Target = {move.TargetSquare}, Flag = {move.Flag}");
         //Generate Masks for starting and ending square
         ulong startMask = 1UL << move.StartSquare;
         ulong targetMask = 1UL << move.TargetSquare;
@@ -105,9 +106,42 @@ public class Board
         //     if ((targetMask & (pieceBitboards[i])) != 0) capturedPiece = i;
         // }
 
+#region debug
+// if (move.StartSquare < 0 || move.StartSquare > 63)
+// {
+//     Console.WriteLine("=================================");
+//     Console.WriteLine("FATAL: GARBAGE MOVE DETECTED!");
+//     Console.WriteLine($"StartSquare value: {move.StartSquare}");
+    
+//     // If your Move struct has a raw integer value (like move.Value or move.moveValue), 
+//     // uncomment the next line and put the correct variable name:
+//     // Console.WriteLine($"Raw Move Integer: {move.Value}"); 
+    
+//     Console.WriteLine("=================================");
+//     Console.Out.Flush();
+//     Environment.Exit(1); // Kills the engine safely so you can read the terminal
+// }
+#endregion
+
+        
+
         int movingPiece = pieceOnSquare[move.StartSquare];
         int capturedPiece = pieceOnSquare[move.TargetSquare];
 
+
+        // if (movingPiece < 0 || movingPiece >= pieceBitboards.Length)
+        // {
+        //     Console.WriteLine("=================================");
+        //     Console.WriteLine("FATAL: GARBAGE MOVE CAUGHT!");
+        //     Console.WriteLine($"StartSquare was: {move.StartSquare}");
+        //     Console.WriteLine($"movingPiece evaluated to: {movingPiece} (Out of Bounds!)");
+        //     Console.WriteLine($"Raw Move Integer: {move.StartSquare}, {move.TargetSquare}, {move.Flag}");
+        //     // BoardUtility.PrintUlongBitboard(pieceBitboards[(int)Piece.WhiteKnights]);
+        //     // BoardPrinter.PrintBitboard(board);
+        //     Console.WriteLine("=================================");
+        //     Console.Out.Flush();
+        //     Environment.Exit(1);
+        // }
 
         //Take snapshot of the current board state
         history[plyCount].capturedPieceType = capturedPiece;

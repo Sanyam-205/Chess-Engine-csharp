@@ -38,6 +38,15 @@ public static class UCIUtility
 
                 case "position":
                     ParsePosition(input, board, moveGenerator);
+        // for (int z = 0; z < 64; z++)
+        // {
+        //     Console.Write(board.pieceOnSquare[z] + "\t");
+
+        //     if ((z + 1) % 8 == 0)
+        //     {
+        //         Console.WriteLine();
+        //     }
+        // }
                     break;
 
                 case "go":
@@ -70,17 +79,53 @@ public static class UCIUtility
     }
 
 
+    // private static void ParsePosition(string input, Board board, MoveGenerator moveGenerator)
+    // {
+    //     // Example inputs:
+    //     // "position startpos"
+    //     // "position startpos moves e2e4 e7e5"
+    //     // "position fen rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 moves e2e4"
+    //     // position startpos moves b1c3 d7d5 e2e3 e7e5 
+
+    //     string[] tokens = input.Split(' ');
+    //     int movesIndex = Array.IndexOf(tokens, "moves");
+
+    //     // 1. Setup the initial board state
+    //     if (tokens[1] == "startpos")
+    //     {
+    //         FenUtility.LoadFromFen(TestPositions.fen0, board);
+    //     }
+    //     else if (tokens[1] == "fen")
+    //     {
+    //         // Reconstruct the FEN string from the tokens
+    //         int fenEndIndex = movesIndex == -1 ? tokens.Length : movesIndex;
+    //         string fen = string.Join(" ", tokens.Skip(2).Take(fenEndIndex - 2));
+    //         FenUtility.LoadFromFen(fen, board);
+    //     }
+
+    //     // 2. Apply any moves played after the initial position
+    //     if (movesIndex != -1)
+    //     {
+    //         for (int i = movesIndex + 1; i < tokens.Length; i++)
+    //         {
+    //             string uciMove = tokens[i];
+    //             ApplyUciMove(uciMove, board, moveGenerator);
+    //         }
+    //     }
+    // }
+
+
     private static void ParsePosition(string input, Board board, MoveGenerator moveGenerator)
     {
-        // Example inputs:
-        // "position startpos"
-        // "position startpos moves e2e4 e7e5"
-        // "position fen rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 moves e2e4"
+        // 1. THE CRITICAL FIX: Split by all whitespace types and remove empty entries.
+        // This perfectly cleans double spaces, \r, \n, and tabs.
+        string[] tokens = input.Split(new char[] { ' ', '\r', '\n', '\t' }, StringSplitOptions.RemoveEmptyEntries);
 
-        string[] tokens = input.Split(' ');
+        if (tokens.Length < 2) return;
+
         int movesIndex = Array.IndexOf(tokens, "moves");
 
-        // 1. Setup the initial board state
+        // 2. Setup the initial board state
         if (tokens[1] == "startpos")
         {
             FenUtility.LoadFromFen(TestPositions.fen0, board);
@@ -93,7 +138,7 @@ public static class UCIUtility
             FenUtility.LoadFromFen(fen, board);
         }
 
-        // 2. Apply any moves played after the initial position
+        // 3. Apply any moves played after the initial position
         if (movesIndex != -1)
         {
             for (int i = movesIndex + 1; i < tokens.Length; i++)
@@ -120,6 +165,8 @@ public static class UCIUtility
         startSquare = startRank*8 + startFile;
         targetSquare = targetRank*8 + targetFile;
 
+        Console.WriteLine($"Applying UCI Move: {uciMove} | Target StartSq: {startSquare}, Target TargetSq: {targetSquare}");
+        // BoardPrinter.PrintBitboard(board);
 
         //check for promotion
         int promotionFlag = 0;
@@ -127,41 +174,104 @@ public static class UCIUtility
         {
             char promotionPiece = uciMove[4];
             promotionFlag = promotionPiece switch
-        {
-            'q' => 1, // Queen promotion
-            'r' => 3, // Rook promotion
-            'b' => 4, // Bishop promotion
-            'n' => 2, // Knight promotion
-            _ => 0    // Default fallback
-        };
+            {
+                'q' => 1, // Queen promotion
+                'r' => 3, // Rook promotion
+                'b' => 4, // Bishop promotion
+                'n' => 2, // Knight promotion
+                _ => 0    // Default fallback
+            };
         }
         
         Move[] moveList = new Move[256];
         int moveCount = 0;
         moveGenerator.GenerateAllPseudoLegalMoves(board, moveList, ref moveCount);
 
+        // for (int i = 0; i < moveCount; i++)
+        // {
+        //     Move move = moveList[i];
+        //     if (move.StartSquare == startSquare && move.TargetSquare == targetSquare)
+        //     {
+        //         bool isPromotion = move.Flag >= (int)Move.MoveFlag.promoteToQueen && move.Flag <= (int)Move.MoveFlag.promoteToBishop;
+                
+        //         if (isPromotion)
+        //         {
+        //             if (move.Flag == promotionFlag)
+        //             {
+        //                 board.MakeMove(move);
+        //                 return;
+        //             }
+        //         }
+        //         else if (!isPromotion && promotionFlag == 0)
+        //         {
+        //             board.MakeMove(move);
+        //                     BoardPrinter.PrintBitboard(board);
+
+        //             return;
+        //         }
+        //     }
+        // }
+
+
+        // bool moveFound = false;
+
         for (int i = 0; i < moveCount; i++)
         {
             Move move = moveList[i];
+            
+            // 1. Do the squares match?
             if (move.StartSquare == startSquare && move.TargetSquare == targetSquare)
             {
                 bool isPromotion = move.Flag >= (int)Move.MoveFlag.promoteToQueen && move.Flag <= (int)Move.MoveFlag.promoteToBishop;
-                
-                if (isPromotion)
+
+                // 2. Do the flags match?
+                if (isPromotion && move.Flag == promotionFlag)
                 {
-                    if (move.Flag == promotionFlag)
-                    {
-                        board.MakeMove(move);
-                        return;
-                    }
+                    board.MakeMove(move);
+                    // moveFound = true;
+                    return;
                 }
                 else if (!isPromotion && promotionFlag == 0)
                 {
                     board.MakeMove(move);
+                    // BoardPrinter.PrintBitboard(board);
+                    // moveFound = true;
                     return;
+                }
+                else
+                {
+                    // CAUGHT A FLAG ERROR
+                    // Console.WriteLine($"[DEBUG] Squares matched for {uciMove}, but rejected by flags! move.Flag: {move.Flag}, uciPromoFlag: {promotionFlag}");
                 }
             }
         }
+
+        // 3. CAUGHT A GENERATOR ERROR
+        // if (!moveFound)
+        // {
+        //     Console.WriteLine("=================================");
+        //     Console.WriteLine($"FATAL: ApplyUciMove SILENTLY FAILED to apply '{uciMove}'!");
+        //     Console.WriteLine($"Looking for Start: {startSquare}, Target: {targetSquare}");
+        //     Console.WriteLine($"Current Turn: {(board.colorToMove == 0 ? "White" : "Black")}");
+        //     Console.WriteLine("Here are the moves the generator ACTUALLY saw for this turn:");
+        //     for(int i = 0; i < moveCount; i++) 
+        //     {
+        //         Console.WriteLine($" - {moveList[i].StartSquare} -> {moveList[i].TargetSquare} (Flag: {moveList[i].Flag})");
+        //     }
+        //     Console.WriteLine("=================================");
+        //     Environment.Exit(1);
+        // }
+
+
+
+
+
+
+
+        // Inside ApplyUciMove, after the for-loop that checks moves:
+        // Console.WriteLine($"FATAL: ApplyUciMove failed to find a legal move for '{uciMove}'!");
+        // Console.Out.Flush();
+        // Environment.Exit(1);
     }
 
     private static void ParseGo(string input, Board board, MoveGenerator moveGenerator, Evaluation evaluation, Search search)
@@ -200,9 +310,21 @@ public static class UCIUtility
         // TODO: Pass time parameters to your search if you implement time management.
         // For a bare-bones engine, you can just rely on fixed depth to start.
 
+        Console.WriteLine("BOARD STATE BEFORE SEARCH:");
+        BoardPrinter.PrintBitboard(board);
         // 1. Call your actual search function
         Move bestMove = search.GetBestMove(board, moveGenerator, evaluation, depth); 
 
+        // BoardPrinter.PrintBitboard(board);
+        for (int z = 0; z < 64; z++)
+        {
+            Console.Write(board.pieceOnSquare[z] + "\t");
+
+            if ((z + 1) % 8 == 0)
+            {
+                Console.WriteLine();
+            }
+        }
         // 2. The critical step: tell the GUI what move you chose
         Console.WriteLine($"bestmove {BoardUtility.MoveToUci(bestMove)}");
     }

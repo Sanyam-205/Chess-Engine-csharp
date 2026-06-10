@@ -32,14 +32,36 @@ public class FenUtility
     public static void LoadFromFen(string boardFen, Board board)
     {
         //initializing castling rights to 0
-        board.castlingRights = 0;
-        board.phaseScore = 0; //initialize phase score to 0 so it can be updated in the switch statement.
+        // board.castlingRights = 0;
+        // board.phaseScore = 0; //initialize phase score to 0 so it can be updated in the switch statement.
 
+        // for (int i = 0; i < 64; i++)
+        // {
+        //     board.pieceOnSquare[i] = -1;
+        // }
+        
+        board.castlingRights = 0;
+        board.phaseScore = 0;
+        
+        // 1. Wipe the Mailbox
         for (int i = 0; i < 64; i++)
         {
             board.pieceOnSquare[i] = -1;
         }
+
+        // 2. WIPE ALL BITBOARDS TO ZERO
+        Array.Clear(board.pieceBitboards, 0, board.pieceBitboards.Length);
+        Array.Clear(board.colorBitboard, 0, board.colorBitboard.Length);
+        board.AllPieces = 0UL;
         
+        // 3. Reset turn and game state variables (Ensure you parse these from FEN later!)
+        board.colorToMove = 0; 
+        board.enPassantSquare = 0;
+        board.plyCount = 0;
+
+
+
+
         //splitting fen string in parts whenever we encounter a space, it would result in 6 different parts each representing a separate parameter.
         string[] fenParts = boardFen.Split(' ');
         

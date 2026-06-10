@@ -23,10 +23,97 @@ class Program
 
        
        
+    //    string[] crashTest = 
+    //    {
+    //         "position startpos",
+    //         "go depth 6",
+    //         "position startpos moves b1c3 d7d5",
+    //         "go depth 6",
+    //         "position startpos moves b1c3 d7d5 e2e3 e7e5",
+    //         "go depth 6",
+    //     };
+
+    //     string[] crashTest1 =
+    //     {
+    //       "position startpos",
+    //       "go depth 6",
+    //       "position startpos moves b1a3 d7d5",
+    //       "go depth 6",
+    //       "position startpos moves b1a3 d7d5 e2e3 e7e5",
+    //       "go depth 6",  
+    //     };
+
+        // string simulatedInput = string.Join(Environment.NewLine, crashTest);// Combine all commands into a single block of text separated by newlines
+
+        
+        
+        // using (System.IO.StringReader reader = new System.IO.StringReader(simulatedInput)) // Redirect standard input to read from our string instead of the keyboard
+        // {
+        //     Console.SetIn(reader);
+            
+        //     /*// The UCI loop will read commands line-by-line. 
+        //     // Because "go depth 6" blocks while searching, it naturally waits 
+        //     // for a response before reading the next line!*/
+        //     UCIUtility.Loop(board, moveGenerator, evaluation, search);
+        // }
+        
+        
+        // Console.SetIn(new System.IO.StreamReader(Console.OpenStandardInput()));// Restore standard input for normal console usage
        
        
-       
-       
+
+//         FenUtility.LoadFromFen(TestPositions.fen0, board);
+        
+//         for(int i = 0; i<5; i++)
+//         {
+//             Console.WriteLine("Enter move :");
+//             string moveString = Console.ReadLine();
+            
+//             board.MakeMove(MoveUtility.MoveFromName(moveString));
+//             BoardPrinter.PrintBitboard(board);
+//             for (int z = 0; z < 64; z++)
+//             {
+//                 Console.Write(board.pieceOnSquare[z] + "\t");
+
+//                 if ((z + 1) % 8 == 0)
+//                 {
+//                     Console.WriteLine();
+//                 }
+//             }
+//             Console.WriteLine();
+
+//         }
+
+
+    //    for(int z = 0; z < 8; z++)
+    //     {
+    //         Console.WriteLine();
+    //         for(int y = 0; y< 8; y++)
+    //         {
+    //             int i = board.pieceOnSquare[y];
+    //             Console.Write(i + ' ');   
+    //             Console.WriteLine();
+    //         }
+    //     }
+
+    // Console.WriteLine(board.pieceOnSquare);
+    // FenUtility.LoadFromFen(TestPositions.fen0, board);
+    // foreach (int num in board.pieceOnSquare)
+    // {
+    //     for(int i = 0; i<8; i++)
+    //         {
+    //             for(int j = 0; j<8; j++)
+    //             {
+    //                 Console.Write(num + ' '); 
+                    
+    //             }
+    //             Console.WriteLine();
+    //         }
+    // }
+
+    
+
+
        
        
        
@@ -44,7 +131,11 @@ class Program
         // string fen2 = "5Q2/4R1pk/4B2p/1p1p4/1P6/2P2P2/1P3P1P/6K1 w - - 1 29";
         
         //"8/8/2K5/7q/1k6/8/8/6r1 b - - 0 1"
-        // FenUtility.LoadFromFen(fen1, board);
+        // FenUtility.LoadFromFen(fen, board);
+        // Move move = search.GetBestMove(board, moveGenerator, evaluation, 5);
+        // search.NegaMax(board, moveGenerator, evaluation, 5, -999999, 999999, 0);
+        // search.PrintPrincipalVariation();
+        // Console.WriteLine(move);
         // Console.WriteLine(evaluation.EvaluatePosition(board));
 
         /*// Move move1 = new Move(12,20);
@@ -84,18 +175,8 @@ class Program
         // board.MakeMove(move);
         // BoardPrinter.PrintBitboard(board);
         // Console.WriteLine(board.colorToMove);
-        
-        // for(int i = 0; i<5; i++)
-        // {
-        //     Console.WriteLine("Enter move :");
-        //     string moveString = Console.ReadLine();
-            
-        //     board.MakeMove(MoveUtility.MoveFromName(moveString));
-        //     Console.WriteLine($"Evaluation : {evaluation.EvaluatePosition(board)}");
-        //     BoardPrinter.PrintBitboard(board);
-        //     Console.WriteLine();
 
-        // }
+        
         
         // Stopwatch stopwatch = Stopwatch.StartNew();
 
