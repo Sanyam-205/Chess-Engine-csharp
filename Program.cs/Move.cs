@@ -53,6 +53,7 @@ public struct Move
     public Move(ushort value) => Value = value; //this is a constructor which i don't know the purpose of. duhh
 
     // THIS IS ACTUALLY RESPONSIBLE FOR MOVES.
+    //Move is of ushort type, It takes in three integers as parameters and encodes it into a single 16 bit ushort. It is made so that the first 6 bits represent the target mask, the next 6 bits represent the start square and final 4 bits represent flag.
     public Move(int StartSquare, int TargetSquare, int Flag = 0)
     {
         //the method Move gets three integer values, startSquare, targetSquare and flag. Our Value is a 16 bit unsigned integer, with 3 sets of bits representing different things. We keep the targetSquare as is, shift startSquare by 6 bits and flag by 12 bits.

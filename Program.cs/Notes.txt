@@ -1,197 +1,3 @@
-The flags need to be generated along with the move generation.
-
-
-public void MovePiece (Move move)
-    {
-
-
-        tempEnPassantSquare = enPassantSquare;
-        enPassantSquare = 0;
-
-        // find out which piece is moving. 
-        // since we're not using an array but bitboards, we can't update the board without updating the actual bitboard of that specific piece. 
-        // we will use a XOR operator. As the name suggests, XOR returns 0 when value is 1 and 1 when value is 0. For our bitboard, it would simply turn the bit on start square to 0 and will turn on the bit on target square essentially moving the piece.
-
-        
-        ulong startMask = 1UL << move.StartSquare; //create a ulong variable where every bit is 0 other than the one on StartSquare
-        ulong targetMask = 1UL << move.TargetSquare; //create a ulong variable where every bit is 0 other than the one on TargetSquare
-
-        ulong moveMask = (1UL << move.StartSquare) | (1UL << move.TargetSquare); ////create another ulong variable where every bit is 0 other than those two bits where startMask and targetMask are 1
-
-
-        // Find the captured piece before processing the move to prevent early break bugs
-        
-
-        for (int i = 0; i<12; i++) // loop through pieceBitboards list
-        {
-
-            if((startMask & pieceBitboards[i])!= 0) //Verify if a non empty square is selected. It means if starting square bitboard and piecebitboard both store 1. In essense, the square isn't empty.
-            {
-                if (tempCapturedPiece != -1)
-                {
-                    pieceBitboards[tempCapturedPiece] &= ~targetMask;
-                }
-                
-                //promotion logic
-                if (move.Flag >= (int)Move.MoveFlag.promoteToQueen && move.Flag <= (int)Move.MoveFlag.promoteToBishop) 
-                {
-                   HandlePromotion(move, i, startMask, targetMask); 
-                }
-
-                // en passant logic
-                else if (move.Flag == (int)Move.MoveFlag.enPassantCapture)
-                {
-                    HandleEnPassant(move, i, startMask, targetMask);
-                }
-
-                
-
-                else 
-                {
-                    pieceBitboards[i] ^= moveMask; // Normal teleport. XOR operator. Since pieceBitboard and moveMask will be 1 only at start square, it will turn start square to 0. Since moveMask will be 0 for pieceBitboard, it will turn it 1, effectively moving the piece.
-                    
-                    if ((i == 0 || i == 6) && (move.StartSquare ^ move.TargetSquare) == 16)
-                    {
-                        // Find the skipped square exactly in double pawn push
-                        int skippedIndex = (colorToMove == 0) ? move.StartSquare + 8 : move.StartSquare - 8;
-                        
-                        enPassantSquare = 1UL << skippedIndex;
-                        
-                    }
-                }
-
-                break;
-                
-                
-            }
-        }
-        history[plyCount].capturedPieceType = tempCapturedPiece;
-        history[plyCount].enPassantSquare = tempEnPassantSquare;
-        plyCount++;
-
-        colorToMove ^= 1; //reverse the turn. Again, using XOR operator with 1 because 0 ^ 1 = 1, 1 ^ 1 = 0
-
-
-    }
-
-
-
-
-
-
-
-0 0 0 1
-0 0 1 0
-
-0 0 1 1
-
-0 1 0 0
-1 0 0 0
-
-
-
-private void HandlePromotion(Move move, int pawnIndex, ulong startMask, ulong targetMask)
-    {
-        pieceBitboards[pawnIndex] ^= startMask;//delete the pawn
-        int baseIndex = Move.flagToBaseIndex[move.Flag];
-        int finalPieceIndex = baseIndex + (colorToMove * 6);
-        pieceBitboards[finalPieceIndex] |= targetMask;
-
-    }   
-    private void HandleEnPassant (Move move, int pawnIndex, ulong startMask, ulong targetMask)
-    {
-        pieceBitboards[pawnIndex] ^= (startMask | targetMask);
-        int captureSquare = (colorToMove == 0) ? move.TargetSquare - 8 : move.TargetSquare + 8;
-
-        ulong captureMask = 1UL <<captureSquare;
-
-        int enemyPawnIndex = (colorToMove == 0) ? 6 : 0; // Black pawn is 6, White pawn is 0
-        pieceBitboards[enemyPawnIndex] ^= captureMask;
-
-    }
-
-
-    public void UnMakeMove (Move move)
-    {
-
-        colorToMove ^= 1;
-        plyCount--;
-
-        int prevCapturedPiece = history[plyCount].capturedPieceType;
-        castlingRights = history[plyCount].castlingRights; // Restore state
-        enPassantSquare = history[plyCount].enPassantSquare; // Restore state
-
-        // int movingPiece = -1;
-
-        ulong targetMask = (1UL << move.TargetSquare);
-
-        int movingPiece = pieceOnSquare[move.TargetSquare];
-        
-        for(int i = 0; i<12; i++)
-        {
-
-            movingPiece = i;
-
-
-            if((targetMask & (pieceBitboards[i])) != 0)
-            {
-
-                if (move.Flag >= (int)Move.MoveFlag.promoteToQueen && move.Flag <= (int)Move.MoveFlag.promoteToBishop) //promotion
-                {
-                    //Remove the piece from the move.TargetSquare
-                    pieceBitboards[i] ^= targetMask;
-
-                    //Place the pawn back on the previous square
-                    pieceBitboards[(int)Piece.WhitePawns + (colorToMove * 6)] |= targetMask;
-                    movingPiece = (int)Piece.WhitePawns + (colorToMove * 6);
-
-                      
-                }
-                
-                else if(move.Flag >= (int)Move.MoveFlag.whiteKingSideCastle && move.Flag <= (int)Move.MoveFlag.blackQueenSideCastle) //castle
-                {
-                    
-                    int rookIndex = (int)Piece.WhiteRooks + (colorToMove * 6);
-                    pieceBitboards[rookIndex] ^= rookCastleMasks[move.Flag - 7];
-                    AllPieces ^= rookCastleMasks[move.Flag - 7]; // return the global occupancy
-                    colorBitboard[colorToMove] ^= rookCastleMasks[move.Flag - 7];
-                }
-
-                else if(move.Flag == (int)Move.MoveFlag.enPassantCapture) // en passant
-                {
-                    int pawnTypeToRestore = (colorToMove == 0) ? (int)Piece.BlackPawns : (int)Piece.WhitePawns;
-                    ulong enPassantVictimMask = (colorToMove == 0) ? targetMask >> 8 : targetMask << 8;
-                    pieceBitboards[pawnTypeToRestore] ^= enPassantVictimMask;
-                    AllPieces ^= enPassantVictimMask;
-                    colorBitboard[colorToMove ^ 1] ^= enPassantVictimMask;
-                }
-
-
-                break;
-                
-            }
-            
-        }
-
-        ulong moveMask = (1UL << move.StartSquare) | (1UL << move.TargetSquare);
-        pieceBitboards[movingPiece] ^= moveMask; // Remove the piece
-
-        AllPieces ^= moveMask; // Return global occupancy
-        colorBitboard[colorToMove] ^= moveMask;
-
-        //Put the piece back
-        if(prevCapturedPiece != -1)
-        {
-            pieceBitboards[prevCapturedPiece] |= targetMask;
-            AllPieces ^= targetMask;
-            colorBitboard[colorToMove ^ 1] ^= targetMask;
-        }
-
-        
-    }
-
-
-
     FINALLY GOT PERFT TO WORK FOR SOME RATHER COMPLEX POSITIONS. LETS FUCKING GOOOOOOOOOOOOOOOO
     BOOM BITCHHH!
 
@@ -204,3 +10,23 @@ private void HandlePromotion(Move move, int pawnIndex, ulong startMask, ulong ta
     TODO - Fine tune slider piece evaluation for example open file bonus, semi open file bonus, long diagonal bonus, connected rooks, 7th haven.
     TODO - Mobility bonus (bounus for having more legal moves)
     TODO - delta pruning in quiescence
+    TODO - Draw detection using zobrist keys.
+
+    V0.1.0 Sapling results - 
+        Self play = 0-50-0
+        Stockfish (depth 6) = 2-27-71
+
+
+
+
+        Evaluation Benchmark
+
+Material Only:
+~1.6M NPS
+
+Material + PST Evaluation:
+~1.3M NPS
+
+Observation:
+Implementation of PST evaluation reduced search speed by approximately 19% while providing significantly improved positional understanding. 
+The performance cost was considered acceptable given the strength improvement observed in practical play.

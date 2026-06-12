@@ -54,13 +54,54 @@ public class Search
         return NegaMax(board, moveGenerator, evaluation, depth, alpha, beta, ply);
     }
 
-Move negaMaxBestMove;
-
-
+    public long ttProbes, ttHits, ttCutoffs;
+    
 
 
     public int NegaMax(Board board, MoveGenerator moveGenerator, Evaluation evaluation, int depth, int alpha, int beta, int ply) 
     {
+        //TT
+        int originalAlpha = alpha;
+        Move bestMoveThisNode = new Move(0); // Track the best move found to store in the TT
+        
+        ttProbes++;
+        //probing logic for TT.
+        //Probing means, before the search algorithm spend crucial resources searching through a position, does that position already exist in the TT? i.e. have we searched through this exact position before?
+        int index = (int)(board.currentHash % (ulong)TT.table.Length); //since one particulat hash will be stored at one particular index, we can straight up jump to that index without needing to loop through the TT.
+        if(TT.table[index].zobristKey == board.currentHash)
+        {
+            ttHits++;
+            bestMoveThisNode = TT.table[index].bestMove;
+
+            if(TT.table[index].depth >= depth)
+            {
+                byte flag_temp = TT.table[index].flagType;
+                int storedScore = TT.table[index].score;
+
+                // 1. Exact Match Check
+                if (flag_temp == (byte)TT.Flags.exactScore) 
+                {
+                    ttCutoffs++;
+                    return storedScore;
+                }
+                
+                // 2. Lower Bound (Beta Cutoff) Check
+                if (flag_temp == (byte)TT.Flags.hashBeta && storedScore >= beta) 
+                {
+                    ttCutoffs++;
+                    return storedScore;
+                }
+                
+                // 3. Upper Bound (Alpha Cutoff) Check
+                if (flag_temp == (byte)TT.Flags.hashAlpha && storedScore <= alpha) 
+                {
+                    ttCutoffs++;
+                    return storedScore;
+                }
+            }
+        }
+        //TT part end
+
         nodeCount++;
 
         if (ply >= MaxPly)
@@ -78,6 +119,7 @@ Move negaMaxBestMove;
             // return evaluation.EvaluatePosition(board);
             return Quiescence(board, moveGenerator, evaluation, alpha, beta, ply);
         }
+
         //Populate moveList with pseudolegal moves
         Move[] moveList = new Move[256];
         int moveCount = 0;
@@ -85,14 +127,36 @@ Move negaMaxBestMove;
 
         int legalMovesPlayed = 0;
 
-
         //Populate scores for each move in the moveList array in the same order.
 
         int[] moveScore = new int[moveCount];
         for(int i = 0; i<moveCount; i++)
         {
             Move newMove = moveList[i];
-            moveScore[i] = ScoreMove(newMove, board);
+
+            //========================================================================================================
+            //                                               TT
+            //========================================================================================================
+
+
+            // // Make sure the move isn't a blank move before rewarding it 1,000,000 points!
+            if (newMove.Value == bestMoveThisNode.Value && bestMoveThisNode.Value != 0) 
+            {
+                moveScore[i] = 1000000; 
+            }
+
+            else
+            {
+                moveScore[i] = ScoreMove(newMove, board);
+            }
+
+            //========================================================================================================
+            //                                               TT
+            //========================================================================================================
+
+            
+            // moveScore[i] = ScoreMove(newMove, board);
+
         }
 
 
@@ -108,6 +172,7 @@ Move negaMaxBestMove;
 
             for(int j = i; j < moveCount; j++)
             {
+                
                 if(moveScore[j] > moveScore[bestMoveIndex])
                 {
                     bestMoveIndex = j;
@@ -191,8 +256,6 @@ Move negaMaxBestMove;
 #endregion
 
 
-
-
             board.MakeMove(move);
 
             int colorThatJustMoved = board.colorToMove ^ 1;
@@ -218,21 +281,32 @@ Move negaMaxBestMove;
             //Alpha-Beta pruning
             if (score >= beta) 
             {
+                /*Beta cutoff in alpha beta pruning and TT are somewhat different. In alpha beta pruning, the beta cutoff is telling us that if a line is too good for us and the opponent already has another line that whose score is less than the score of this line then the opponent will never let us enter that path.
+                That path is 'too good' because up in the tree, the opponent has another line that leads to a better evaluation for them
+                A better, guaranteed evaluation for the opponent is the beta score..
+                
+                To understand TT, TT does not care if the opponent will ever let us enter than line. That is managed by alpha beta pruning. TT only cares to return the evaluation that we were going to get if that line were to happen.
+                TT tells us that if that line were to happen, then you could get atleast this much score. So this becomes our lowerbound. 
+
+                Imagine alpha = 20, beta = 50, score = 90.
+                alpha being 20 means that out current best score is alpha. Beta being 50 means that the opponent already has a line that forces our score to be 50. Score being 90 means that if we were to go down that line than we could get an evaluation of 90.
+                In alpha beta pruning, this is too good so opponent will never allow it.
+                In TT however, if we were to ever go down that line then 90 is the score we are guaranteed to have so that 90 becomes our lowerbound flag which is hashBeta.
+                
+                */
+
+
+                TT.Store(board.currentHash, (byte)depth, score, (byte)TT.Flags.hashBeta, move); //hashBeta is the lowerbound score.
                 return score; //If this branch leads to a worse outcome, do not consider it. Return beta and get out of the path.
-                //There is some confusion as to returning beta or score. I don't understand it yet but returning score is better because it gives more information somehow. I don't know.
             }
             if (score > alpha) 
             {
+                //normal alpha beta pruning logic. We found a better move, update score.
                 alpha = score; //We found a better move for ourselves
              
-                //debug
-                // if (ply == 0)
-                // {
-                //     Console.WriteLine($"Root updating PV: Move is {move.StartSquare} to {move.TargetSquare}, Score is {score}");
-                // } 
-
-                pvTable[ply, 0] = move;
-                negaMaxBestMove = move;
+                pvTable[ply, 0] = move; //stores the best move found at this depth.
+                bestMoveThisNode = move; // Store the move for TT
+                
                 // 2. Copy the sequence of moves from the deeper ply
                 for (int j = 0; j < pvLength[ply + 1]; j++)
                 {
@@ -262,6 +336,14 @@ Move negaMaxBestMove;
             }
         }
 
+        /*Suppose a node at n depth enters the negamax with alpha score of 30. We store this to original alpha. 
+        Alpha score of 30 means 30 is the besst possible evaluation for the moving side before it searches any deeper. Now after the search, the best possible score or alpha we got is 20.
+        Since alpha < originalAlpha meaning 30 is the upper bound, every other score we can get from this branch would be less than 30. Thats why it becomes our upperbound. 
+
+        Imagine in that some node at depth n, we entered the search with 30 alpha, 70 beta and 50 score, this becomes our exact score since this fits inside the upperbound(calculated right here) and lowerbound(calculated above.)
+        */
+        byte flag = (alpha <= originalAlpha) ? (byte)TT.Flags.hashAlpha : (byte)TT.Flags.exactScore;
+        TT.Store(board.currentHash, (byte)depth, alpha, flag, bestMoveThisNode);
         return alpha;
     }
 
