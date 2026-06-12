@@ -38,6 +38,50 @@ public static class PerftTool
         return nodes;
     }
 
+    // Global counter to track progress during long test suites
+    public static long testSuiteNodesProcessed = 0;
+
+    // Dedicated test suite method to run Perft while validating state and hashing at every node
+    public static long PerftTestSuit(Board board, MoveGenerator moveGenerator, int depth)
+    {
+        if (depth == 0) 
+        {
+            testSuiteNodesProcessed++;
+            if (testSuiteNodesProcessed % 100_000_000 == 0)
+            {
+                Console.WriteLine($"[Progress] Processed {testSuiteNodesProcessed:N0} leaf nodes...");
+            }
+            return 1;
+        }
+
+        long nodes = 0;
+        Move[] moveList = new Move[256]; 
+        int moveCount = 0;
+        
+        moveGenerator.GenerateAllPseudoLegalMoves(board, moveList, ref moveCount); 
+
+        for (int i = 0; i < moveCount; i++)
+        {
+            Move move = moveList[i];
+
+            AssertNoStateLeak(board, move); // Validates Hash & State correctness
+
+            board.MakeMove(move);
+
+            int colorThatJustMoved = board.colorToMove ^ 1;
+            int kingSquare = board.GetKingSquare(colorThatJustMoved); 
+            
+            if (kingSquare != -1 && !board.IsSquareAttacked(kingSquare, colorThatJustMoved)) 
+            {
+                nodes += PerftTestSuit(board, moveGenerator, depth - 1);
+            }
+
+            board.UnmakeMove(move);
+        }
+        
+        return nodes;
+    }
+
     public static Dictionary<string, long> PerftDivide(Board board, MoveGenerator moveGenerator, int depth)
     {
         var results = new Dictionary<string, long>();
@@ -96,8 +140,17 @@ public static class PerftTool
         
         ulong preEnPassant = board.enPassantSquare;
         int preCastling = board.castlingRights;
+        ulong preHash = board.currentHash;
 
         board.MakeMove(move);
+
+        // Verify the incrementally updated hash matches the from-scratch hash
+        ulong generatedHash = Zobrist.GenerateHash(board);
+        if (board.currentHash != generatedHash)
+        {
+            throw new Exception($"Hash update failed on {BoardUtility.MoveToUci(move)}!\nIncremental : {board.currentHash}\nGenerated   : {generatedHash}");
+        }
+
         board.UnmakeMove(move);
 
         if (preAll != board.AllPieces) throw new Exception($"AllPieces leaked on {BoardUtility.MoveToUci(move)}");
@@ -112,5 +165,6 @@ public static class PerftTool
         
         if (preEnPassant != board.enPassantSquare) throw new Exception($"EP leaked on {BoardUtility.MoveToUci(move)}");
         if (preCastling != board.castlingRights) throw new Exception($"Castling leaked on {BoardUtility.MoveToUci(move)}");
+        if (preHash != board.currentHash) throw new Exception($"Hash leaked on {BoardUtility.MoveToUci(move)}");
     }
 }

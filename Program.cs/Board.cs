@@ -9,6 +9,7 @@ public struct BoardState
     public int capturedPieceType;
     public ulong enPassantSquare;
     public int castlingRights;
+    public ulong currentHash;
 }
 
 public class Board
@@ -27,6 +28,7 @@ public class Board
 
     public int colorToMove, castlingRights;
     public ulong enPassantSquare;
+    public ulong currentHash;
 
 
     public static int[] castlingRightsUpdate = new int[64]; //stores bord information for the specific squares for castling.
@@ -97,14 +99,6 @@ public class Board
 
         ulong moveMask = (1UL << move.StartSquare) | (1UL << move.TargetSquare);
 
-        // int movingPiece = -1;
-        // int capturedPiece = -1;
-
-        // for (int i = 0; i < 12; i++)
-        // {
-        //     if ((startMask &  (pieceBitboards[i])) != 0) movingPiece = i;
-        //     if ((targetMask & (pieceBitboards[i])) != 0) capturedPiece = i;
-        // }
 
 #region debug
 // if (move.StartSquare < 0 || move.StartSquare > 63)
@@ -128,7 +122,7 @@ public class Board
         int movingPiece = pieceOnSquare[move.StartSquare];
         int capturedPiece = pieceOnSquare[move.TargetSquare];
 
-
+#region debug
         // if (movingPiece < 0 || movingPiece >= pieceBitboards.Length)
         // {
         //     Console.WriteLine("=================================");
@@ -142,13 +136,23 @@ public class Board
         //     Console.Out.Flush();
         //     Environment.Exit(1);
         // }
+    #endregion
 
         //Take snapshot of the current board state
         history[plyCount].capturedPieceType = capturedPiece;
         history[plyCount].enPassantSquare = enPassantSquare; 
-        history[plyCount].castlingRights = castlingRights;   
+        history[plyCount].castlingRights = castlingRights;
+        history[plyCount].currentHash = currentHash;   
         plyCount++;
         
+        //hash key removal for en passant
+        //If the enPassantSquare currently holds the value, then wipe that value clean from the hash key.
+        if(enPassantSquare != 0)
+        {
+            int enPassantFile = (BitOperations.TrailingZeroCount(enPassantSquare)) % 8;
+            currentHash ^= Zobrist.enPassantKeys[enPassantFile];
+        }
+
         enPassantSquare = 0; // set enPassantSquare back to 0 at start of new move
 
         //Capture
@@ -162,11 +166,14 @@ public class Board
                 Assume a rook on a1(0) captures a piece at a8(56). moveMask will have 0 and 56th index turned on. When we do the standard XOR toggle, it will remove the rook from a1, but instead of it being on a8, it will remove the rook as well as the piece on a8. To fix this, before removing the piece from a8, we do AllPieces &= ~targetMask. It will turn the exact bit where a piece lands while capturing off on AllPieces.   
             */
 
+            ///////////////////////////////////////////////////////////////////
 
             pieceBitboards[capturedPiece] &= ~targetMask; //Remove the captured piece 
 
             colorBitboard[colorToMove ^ 1] &= ~targetMask;
             
+            // Remove the captured piece from the hash
+            currentHash ^= Zobrist.pieceHash[move.TargetSquare][capturedPiece];
         }
         
 
@@ -181,10 +188,30 @@ public class Board
             AllPieces ^= rookCastleMasks[move.Flag - 7]; // update occupancy for rook manually   
             colorBitboard[colorToMove] ^= rookCastleMasks[move.Flag - 7];     
 
-            if (move.Flag == (int)Move.MoveFlag.whiteKingSideCastle) { pieceOnSquare[7] = -1; pieceOnSquare[5] = rookIndex; }
-            else if (move.Flag == (int)Move.MoveFlag.whiteQueenSideCastle) { pieceOnSquare[0] = -1; pieceOnSquare[3] = rookIndex; }
-            else if (move.Flag == (int)Move.MoveFlag.blackKingSideCastle) { pieceOnSquare[63] = -1; pieceOnSquare[61] = rookIndex; }
-            else if (move.Flag == (int)Move.MoveFlag.blackQueenSideCastle) { pieceOnSquare[56] = -1; pieceOnSquare[59] = rookIndex; }
+            if (move.Flag == (int)Move.MoveFlag.whiteKingSideCastle) 
+            { 
+                pieceOnSquare[7] = -1; pieceOnSquare[5] = rookIndex; 
+                currentHash ^= Zobrist.pieceHash[7][rookIndex];
+                currentHash ^= Zobrist.pieceHash[5][rookIndex];
+            }
+            else if (move.Flag == (int)Move.MoveFlag.whiteQueenSideCastle) 
+            {   
+                pieceOnSquare[0] = -1; pieceOnSquare[3] = rookIndex; 
+                currentHash ^= Zobrist.pieceHash[0][rookIndex];
+                currentHash ^= Zobrist.pieceHash[3][rookIndex];
+            }
+            else if (move.Flag == (int)Move.MoveFlag.blackKingSideCastle) 
+            {
+                pieceOnSquare[63] = -1; pieceOnSquare[61] = rookIndex; 
+                currentHash ^= Zobrist.pieceHash[63][rookIndex];
+                currentHash ^= Zobrist.pieceHash[61][rookIndex];
+            }
+            else if (move.Flag == (int)Move.MoveFlag.blackQueenSideCastle) 
+            { 
+                pieceOnSquare[56] = -1; pieceOnSquare[59] = rookIndex; 
+                currentHash ^= Zobrist.pieceHash[56][rookIndex];
+                currentHash ^= Zobrist.pieceHash[59][rookIndex];
+            }
         
 
 
@@ -215,6 +242,10 @@ public class Board
             ulong targetMask1 = (1UL << move.TargetSquare);
             ulong moveMask1 = startMask | targetMask;
 
+            //Remove the pawn hash key from starting square
+            currentHash ^= Zobrist.pieceHash[move.StartSquare][movingPiece];
+
+
             // 1. Completely remove the Pawn from the Start Square
             pieceBitboards[movingPiece] ^= startMask1;
 
@@ -232,7 +263,10 @@ public class Board
 
             // 4. Update the pieceOnSquare array correctly
             pieceOnSquare[move.StartSquare] = -1; // Clear the start square
-            pieceOnSquare[move.TargetSquare] = finalPieceIndex; 
+            pieceOnSquare[move.TargetSquare] = finalPieceIndex;
+
+            //Update hash key for promoted piece
+            currentHash ^= Zobrist.pieceHash[move.TargetSquare][finalPieceIndex]; 
         
         
         }
@@ -252,6 +286,9 @@ public class Board
 
             pieceOnSquare[epVictimSquare] = -1;
 
+            // Correctly remove the enemy pawn that was on the victim square
+            currentHash ^= Zobrist.pieceHash[epVictimSquare][enemyPawn];
+
         }
 
         //double pawn push
@@ -259,21 +296,30 @@ public class Board
         {
             int skippedIndex = (colorToMove == 0) ? move.StartSquare + 8 : move.StartSquare - 8;
             enPassantSquare = 1UL << skippedIndex;
+
+            //update zobrist key if double push   
+            int enPassantFile = BitOperations.TrailingZeroCount(enPassantSquare) % 8;
+            currentHash ^= Zobrist.enPassantKeys[enPassantFile];
         }
 
 
 
 
-
+        currentHash ^= Zobrist.castlingKeys[castlingRights];//remove old hash keys for castling
+        
         //Castling
-        castlingRights &= castlingRightsUpdate[move.StartSquare];
+        castlingRights &= castlingRightsUpdate[move.StartSquare];//update physical rights for castling
         castlingRights &= castlingRightsUpdate[move.TargetSquare];
     
+        currentHash ^= Zobrist.castlingKeys[castlingRights];//add new hash keys for caslting
 
 
         //teleport the piece / NORMAL MOVE
         if(move.Flag == 0 || move.Flag > (int)Move.MoveFlag.promoteToBishop)
         {
+            currentHash ^= Zobrist.pieceHash[move.StartSquare][movingPiece]; //remove the moving piece from start square
+            currentHash ^= Zobrist.pieceHash[move.TargetSquare][movingPiece]; //add the moving piece to target square
+
             pieceBitboards[movingPiece] ^= moveMask; // teleport the piece
         
             AllPieces ^= moveMask; // updates global occupancy
@@ -296,8 +342,9 @@ public class Board
        
 
         //Turn switch
-        colorToMove ^= 1;
-
+        currentHash ^= Zobrist.sideToMoveKeys[colorToMove]; //remove the current turn's zorbist key
+        colorToMove ^= 1; //switch turn
+        currentHash ^= Zobrist.sideToMoveKeys[colorToMove]; //add the new turn's zorbist key
 
     }
 
@@ -310,6 +357,7 @@ public class Board
         int prevCapturedPiece = history[plyCount].capturedPieceType;
         castlingRights = history[plyCount].castlingRights; // Restore state
         enPassantSquare = history[plyCount].enPassantSquare; // Restore state
+        currentHash = history[plyCount].currentHash;
 
 
         ulong targetMask = (1UL << move.TargetSquare);
@@ -494,14 +542,17 @@ public class Board
         //if we have to check for white king is under attack, we use the whitePawnAttack table as pawn mask. 
         // We do so because if the white king is on square 20, it can be attacked by a black pawn on square 27 or 29. Since a white pawn on square 20 also attacks square 27 and 29, we reverse it's logic. 
         // If whitePawnAttack table for the square coincides with black king on that square, the king on that square will be attacked.
-if(square == -1)
-{
-    Console.WriteLine("BAD SQUARE INDEX");
-    Console.WriteLine($"FATAL: Invalid square index {square} passed to IsSquareAttacked");
 
-    Console.Out.Flush();
-    Environment.Exit(1);   
-}
+#region debug
+// if(square == -1)
+// {
+//     Console.WriteLine("BAD SQUARE INDEX");
+//     Console.WriteLine($"FATAL: Invalid square index {square} passed to IsSquareAttacked");
+
+//     Console.Out.Flush();
+//     Environment.Exit(1);   
+// }
+#endregion
 
 
         int enemyColor = defendingColor ^ 1;
@@ -576,7 +627,7 @@ if(square == -1)
         castlingRightsUpdate[56] = 7; // rook a8
 
 
-        /// 1111 - No castling desabled
+        /// 1111 - No castling disabled
         
         ///  14     1110 - White kindside castling disabled
         ///  13     1101 - White queenside castling disabled

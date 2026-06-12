@@ -197,7 +197,7 @@ public class FenUtility
         board.colorBitboard[(int)PieceTeam.BlackPieces] = board.pieceBitboards[(int)Piece.BlackPawns] | board.pieceBitboards[(int)Piece.BlackKnights] | board.pieceBitboards[(int)Piece.BlackBishops] | board.pieceBitboards[(int)Piece.BlackRooks] | board.pieceBitboards[(int)Piece.BlackQueens] | board.pieceBitboards[(int)Piece.BlackKing];
         board.AllPieces = board.colorBitboard[(int)PieceTeam.WhitePieces] | board.colorBitboard[(int)PieceTeam.BlackPieces];
 
-
+        board.currentHash = Zobrist.GenerateHash(board);
 
     }
 

@@ -5,7 +5,6 @@ public static class UCIUtility
     
     public static void Loop(Board board, MoveGenerator moveGenerator, Evaluation evaluation, Search search)
     {
-        // Console.WriteLine("Custom Engine UCI initialized.")
 
         while (true)
         {
@@ -38,6 +37,7 @@ public static class UCIUtility
 
                 case "position":
                     ParsePosition(input, board, moveGenerator);
+#region debug
         // for (int z = 0; z < 64; z++)
         // {
         //     Console.Write(board.pieceOnSquare[z] + "\t");
@@ -47,6 +47,7 @@ public static class UCIUtility
         //         Console.WriteLine();
         //     }
         // }
+#endregion
                     break;
 
                 case "go":
@@ -77,42 +78,6 @@ public static class UCIUtility
 
 
     }
-
-
-    // private static void ParsePosition(string input, Board board, MoveGenerator moveGenerator)
-    // {
-    //     // Example inputs:
-    //     // "position startpos"
-    //     // "position startpos moves e2e4 e7e5"
-    //     // "position fen rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 moves e2e4"
-    //     // position startpos moves b1c3 d7d5 e2e3 e7e5 
-
-    //     string[] tokens = input.Split(' ');
-    //     int movesIndex = Array.IndexOf(tokens, "moves");
-
-    //     // 1. Setup the initial board state
-    //     if (tokens[1] == "startpos")
-    //     {
-    //         FenUtility.LoadFromFen(TestPositions.fen0, board);
-    //     }
-    //     else if (tokens[1] == "fen")
-    //     {
-    //         // Reconstruct the FEN string from the tokens
-    //         int fenEndIndex = movesIndex == -1 ? tokens.Length : movesIndex;
-    //         string fen = string.Join(" ", tokens.Skip(2).Take(fenEndIndex - 2));
-    //         FenUtility.LoadFromFen(fen, board);
-    //     }
-
-    //     // 2. Apply any moves played after the initial position
-    //     if (movesIndex != -1)
-    //     {
-    //         for (int i = movesIndex + 1; i < tokens.Length; i++)
-    //         {
-    //             string uciMove = tokens[i];
-    //             ApplyUciMove(uciMove, board, moveGenerator);
-    //         }
-    //     }
-    // }
 
 
     private static void ParsePosition(string input, Board board, MoveGenerator moveGenerator)
@@ -187,6 +152,7 @@ public static class UCIUtility
         int moveCount = 0;
         moveGenerator.GenerateAllPseudoLegalMoves(board, moveList, ref moveCount);
 
+#region debug
         // for (int i = 0; i < moveCount; i++)
         // {
         //     Move move = moveList[i];
@@ -211,9 +177,8 @@ public static class UCIUtility
         //         }
         //     }
         // }
-
-
         // bool moveFound = false;
+#endregion
 
         for (int i = 0; i < moveCount; i++)
         {
@@ -245,6 +210,7 @@ public static class UCIUtility
                 }
             }
         }
+#region debug
 
         // 3. CAUGHT A GENERATOR ERROR
         // if (!moveFound)
@@ -261,17 +227,13 @@ public static class UCIUtility
         //     Console.WriteLine("=================================");
         //     Environment.Exit(1);
         // }
-
-
-
-
-
-
-
-        // Inside ApplyUciMove, after the for-loop that checks moves:
         // Console.WriteLine($"FATAL: ApplyUciMove failed to find a legal move for '{uciMove}'!");
         // Console.Out.Flush();
         // Environment.Exit(1);
+#endregion
+
+
+
     }
 
     private static void ParseGo(string input, Board board, MoveGenerator moveGenerator, Evaluation evaluation, Search search)
@@ -315,16 +277,18 @@ public static class UCIUtility
         // 1. Call your actual search function
         Move bestMove = search.GetBestMove(board, moveGenerator, evaluation, depth); 
 
-        // BoardPrinter.PrintBitboard(board);
-        for (int z = 0; z < 64; z++)
-        {
-            Console.Write(board.pieceOnSquare[z] + "\t");
+#region debug
+        // // BoardPrinter.PrintBitboard(board);
+        // for (int z = 0; z < 64; z++)
+        // {
+        //     Console.Write(board.pieceOnSquare[z] + "\t");
 
-            if ((z + 1) % 8 == 0)
-            {
-                Console.WriteLine();
-            }
-        }
+        //     if ((z + 1) % 8 == 0)
+        //     {
+        //         Console.WriteLine();
+        //     }
+        // }
+#endregion
         // 2. The critical step: tell the GUI what move you chose
         Console.WriteLine($"bestmove {BoardUtility.MoveToUci(bestMove)}");
     }

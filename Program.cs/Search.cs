@@ -550,6 +550,7 @@ Move negaMaxBestMove;
             }
         }
 
+#region debug
         // if (board.colorToMove == 1) 
         // {
         //     if (inCheck && legalMovesPlayed == 0) 
@@ -566,6 +567,7 @@ Move negaMaxBestMove;
         //     }
         // }
 
+#endregion
         if(inCheck && legalMovesPlayed == 0)
         {
             return -100000;
