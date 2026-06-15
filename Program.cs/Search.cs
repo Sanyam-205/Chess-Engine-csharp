@@ -28,7 +28,37 @@ public class Search
 
     const int MaxPly = 256; //ply represents half move. ! full move = 2 ply.
 
-    ushort[,] killerMoves = new ushort[MaxPly, 2];
+    ushort[,] killerMoves = new ushort[MaxPly, 2]; //stores quiet moves that caused beta cutoff at that specific ply in a search tree.
+
+    /*
+        Killer moves are used to score quiet moves that caused a beta cutoff in the game so that our move ordering logic can order these quiet moves.
+        Killer moves store the 2 best moves that caused beta cutoff at each ply and is updated at each ply.
+        In killer moves, a move that caused a beta cutoff at a specific ply is scored. Imagine MaxPly is 8, meaning the engine will search at 8 depth. Killer move store the encoded move struct, for example at depth 1, e2e4 caused a beta cutoff so killerMoves[1, 1] will store encoded e2e4 ushort value and ScoreMove will give it a score (90 for first move, 80 for second). 
+        When e2e4 is scored, the move ordering logic orders it higher than other quiet moves which have a score of 0.
+        Now, at depth 2, the move d2d4 caused beta cutoff. So now, killerMoves[2,1] will store d2d4 as e2e4 was shifted one place down to [2,2]. Same move ordering and scoring logic applies.
+        If the same move causes beta cutoff, then it is discarded.
+        Now, suppose at depth 7, somehow Nc6 causes beta cutoff, so killerMoves[7,1] will store Nb1c6, killerMoves[7,2] will store d2d4 and e2e4 is replaced.    
+    
+    */
+    int[,] historyMoves = new int[12,64]; //12 = number of piecesm 64 = board squares.
+    /*
+        History heuristics are also used to apply a score to quiet moves that caused beta cutoff so our move ordering logic can order these moves higher than standard quiet moves (with score of 0). 
+        But unlike killer moves that store 2 best moves that caused beta cutoff at specific ply, history heuristics, store moves that caused beta cutoff throughout the game. 
+        The idea is that if a quiet move caused a beta cutoff at one part of the game, then that move is likely good enough to be assigned a higher search priority.
+        If a move e2e4, causes beta cutoff multiple times, then that move's score is higher and it will be searched first.
+        Imagine the move Nb1c3 causes beta cutoff once, historyMoves, store [1,18] -> white knight = 1, c3 = 18 and assigns it a score x. That same move, causes beta cutoff once again in a different search tree, so now the previous score historyMoves[1,18] will be added to its new value, so historyMoves[1,18] will store x+y
+        Because we are tracking the entire game, moves that cause beta cutoff frequently should be assigned higher scores than moves that cause beta cutoff rarely.
+
+        The general formula for historyMoves is historyMoves[piece, square] += depth * depth. But we can't use this directly because 1. it will cause integer overflow pretty quickly. 2. We still need mvv-lva captures and quiet moves to be scored higher, so we apply bounds to this.
+
+        There is also an idea where moves that don't cause beta cutoff are given a penalty. We will see if we implement this or not....
+    
+    */
+
+    const int maxHistory = 1 << 14;
+    //We use maxHistory to limit the hitoryMove score from becoming too high. 
+    //Why 1<<14? Because we want to use a nice round number like 10,000 but if we use intergers, we will need to use / operator to limit the score, but with 1 << 14, which is 2^14 = 16,384, we get the closest to 10,000.
+
     Move[,] pvTable = new Move[MaxPly, MaxPly]; //fixed 2d array to store the move and depth score.
     int[] pvLength = new int[MaxPly]; //need to track how long the move sequence is at each depth so it can be copied downward at the next depth level
 
@@ -145,7 +175,9 @@ public class Search
 
         //Populate moveList with pseudolegal moves
         Move[] moveList = new Move[256];
+        Move[] quietMoveList = new Move[256];
         int moveCount = 0;
+        int quietMoveCount = 0;
         moveGenerator.GenerateAllPseudoLegalMoves(board, moveList, ref moveCount);
 
         int legalMovesPlayed = 0;
@@ -161,8 +193,6 @@ public class Search
             //                                               TT
             //========================================================================================================
 
-
-            // // Make sure the move isn't a blank move before rewarding it 1,000,000 points!
             if (newMove.Value == bestMoveThisNode.Value && bestMoveThisNode.Value != 0) 
             {
                 moveScore[i] = 15000; 
@@ -223,7 +253,8 @@ public class Search
 
             // continuation of search
             Move move = moveList[i];
-            
+
+            bool isQuietMove = board.pieceOnSquare[move.TargetSquare] == -1 && move.Flag != (int)Move.MoveFlag.enPassantCapture;
             bool isKiller = (move.Value != 0) && (move.Value == killerMoves[ply, 0] || move.Value == killerMoves[ply, 1]);
             if (isKiller)
             {
@@ -307,6 +338,8 @@ public class Search
                 continue; 
             }
 
+            
+
             legalMovesPlayed++;
 
             //Recursive call for lower depth.
@@ -331,7 +364,8 @@ public class Search
                     gameKillerMovesHit++;
                 }
                 
-                /*Beta cutoff in alpha beta pruning and TT are somewhat different. In alpha beta pruning, the beta cutoff is telling us that if a line is too good for us and the opponent already has another line that whose score is less than the score of this line then the opponent will never let us enter that path.
+                /*Beta cutoff in alpha beta pruning and TT are somewhat different. 
+                In alpha beta pruning, the beta cutoff is telling us that if a line is too good for us and the opponent already has another line that whose score is less than the score of this line then the opponent will never let us enter that path.
                 That path is 'too good' because up in the tree, the opponent has another line that leads to a better evaluation for them
                 A better, guaranteed evaluation for the opponent is the beta score..
                 
@@ -349,20 +383,37 @@ public class Search
                 /*If a quiet move causes a beta cutoff then that move is likely good. So we store that move in a killer move array. 
                 A killer move is a move that is non capture. As beta cutoof only happens when choosing this branch will lead to us getting a better evaluation, this means that a quiet move raised our eval.*/
 
-                //=========================killer move==================================
+                //=========================killer move + history heuristics==================================
 
+                //quiet move check
                 if(board.pieceOnSquare[move.TargetSquare] == -1 && move.Flag != (int)Move.MoveFlag.enPassantCapture)
                 {
+                    //killer move
                     if(move.Value != killerMoves[ply,0])
                     {
                         killerMoves[ply, 1] = killerMoves[ply, 0]; //shift the prevoius killer move
                     
                         killerMoves[ply, 0] = move.Value; //store the move.value to killermove[ply,0]
                     }
+
+                    historyMoves[board.pieceOnSquare[move.StartSquare], move.TargetSquare] += depth * depth; //assign an internal history score which will be given a move ordering score in ScoreMove
+
+
+                    for (int k = 0; k < quietMoveCount; k++)
+                    {
+                        Move penalizedMove = quietMoveList[k];
+                    
+                        int piece = board.pieceOnSquare[penalizedMove.StartSquare];
+                        int square = penalizedMove.TargetSquare;
+
+                        int tempScore = historyMoves[piece, square] - depth * depth;
+
+                        historyMoves[piece, square] = (tempScore < 0) ? 0 : tempScore;
+                    }
                 }
 
 
-                //=========================killer move==================================
+                //=========================killer move + history heuristics==================================
 
                 int ttScore = score;
                 if (ttScore > 90000 && ttScore < 400000) ttScore += ply;
@@ -397,30 +448,15 @@ public class Search
                 pvLength[ply] = pvLength[ply + 1] + 1;
             }
 
+            if (isQuietMove) 
+            {
+                quietMoveList[quietMoveCount] = move;
+                quietMoveCount++;
+            }
+
 
         }
 
-
-        // if (bestMoveThisNode.Value != 0)
-        // {
-        //     bool found = false;
-
-        //     for(int i = 0; i < moveCount; i++)
-        //     {
-        //         if(moveList[i].Value == bestMoveThisNode.Value)
-        //         {
-        //             found = true;
-        //             break;
-        //         }
-        //     }
-
-        //     if(!found)
-        //     {
-        //         Console.WriteLine("TT move not found!");
-        //         Console.Out.Flush();
-        //         Environment.Exit(1);
-        //     }
-        // }
 
         //STALEMATE, CHECKMATE CHECK.
         if(legalMovesPlayed == 0)
@@ -469,133 +505,7 @@ public class Search
     }
 
 
-
-    //Quiescence function
-    // public int quiescence(Board board, MoveGenerator moveGenerator, Evaluation evaluation, int alpha, int beta, int ply)
-    // {
-    //     pvLength[ply] = 0;
-
-    //     int kingSquare1 = board.GetKingSquare(board.colorToMove);
-
-    //     bool isCheck = board.IsSquareAttacked(kingSquare1, board.colorToMove);
-
-    //     if(isCheck)
-    //     {
-    //         //do something
-    //         // if the king is in check we need to discard the standPat score. If a king in check should be treated as a noisy move even though it is quiet. The problem without thst is if a king is in check, quiescence only generates noisy moves (captures, promotions) and it completely disregards checks.
-
-    //         Move[] moveList = new Move[256];
-    //         int moveCount = 0;
-    //         moveGenerator.GenerateAllPseudoLegalMoves(board, moveList, ref moveCount);
-    //         int legalMoves = 0;
-
-    //         for(int i = 0; i<moveCount; i++)
-    //         {
-    //             Move move = moveList[i];
-
-    //             board.MakeMove(move);
-                
-    //             if((kingSquare1!= -1) && board.IsSquareAttacked(kingSquare1, board.colorToMove ^ 1))
-    //             {
-    //                 board.UnmakeMove(move);
-    //                 continue;
-    //             }
-    //             legalMoves++;
-    //         }
-
-    //         if(legalMoves == 0) return -100000;
-    //     }
-
-
-
-    //     else //king is not in check.
-    //     {
-    //         int standPat = evaluation.EvaluatePosition(board);
-    //         if(standPat >= beta) return beta;
-
-    //         //alpha = max of alpha, standPat
-    //         alpha = (alpha > standPat) ? alpha : standPat;
-
-    //         Move[] moveList = new Move[256];
-    //         int moveCount = 0;
-    //         moveGenerator.GenerateAllPseudoLegalCaptures(board, moveList, ref moveCount);
-
-    //         int legalMovesPlayed = 0;
-
-    //         int[] moveScore = new int[moveCount];
-    //         for(int i = 0; i<moveCount; i++)
-    //         {
-    //             Move newMove = moveList[i];
-    //             moveScore[i] = ScoreMove(newMove, board);
-    //         }
-
-    //         for(int i = 0; i<moveCount; i++)
-    //         {
-    //             int bestMoveIndex = i;
-
-    //             for(int j = i; j < moveCount; j++)
-    //             {
-    //                 if(moveScore[j] > moveScore[bestMoveIndex])
-    //                 {
-    //                     bestMoveIndex = j;
-    //                 }
-    //             }
-
-    //             Move tempMove = moveList[i];
-    //             moveList[i] = moveList[bestMoveIndex];
-    //             moveList[bestMoveIndex] = tempMove;
-
-    //             int temp = moveScore[i];
-    //             moveScore[i] = moveScore[bestMoveIndex];
-    //             moveScore[bestMoveIndex] = temp;
-
-    //             Move move = moveList[i];
-    //             board.MakeMove(move);
-    //             int colorThatJustMoved = board.colorToMove ^ 1;
-    //             int kingSquare = board.GetKingSquare(colorThatJustMoved);
-
-    //             if((kingSquare!= -1) && board.IsSquareAttacked(kingSquare, colorThatJustMoved))
-    //             {
-    //                 board.UnmakeMove(move);
-    //                 continue;
-    //             }
-
-    //             board.UnmakeMove(move);
-    //             legalMovesPlayed++;
-
-    //             int score = -quiescence(board, moveGenerator, evaluation, -beta, -alpha, ply+1);
-            
-    //             board.UnmakeMove(move);
-
-    //             if(score>=beta)
-    //             {
-    //                 return score; //cutoff
-    //             }
-
-    //             if(score > alpha)
-    //             {
-    //                 alpha = score;
-
-    //                 pvTable[ply, 0] = move;
-
-    //                  // 2. Copy the sequence of moves from the deeper ply
-    //                 for (int j = 0; j < pvLength[ply + 1]; j++)
-    //                 {
-    //                     pvTable[ply, j + 1] = pvTable[ply + 1, j];
-    //                 }
-
-    //                 // 3. Update the length of the sequence for this ply
-    //                 pvLength[ply] = pvLength[ply + 1] + 1;
-
-
-    //             }
-    //         }
-    //     }
-
-    //     return alpha;
-    // }
-
-
+#region quiescence
     public int Quiescence (Board board, MoveGenerator moveGenerator, Evaluation evaluation, int alpha, int beta, int ply)
     {
         qNodes++;
@@ -725,7 +635,7 @@ public class Search
 //     Console.Out.Flush();
 //     Environment.Exit(1);
 // }
-#endregion
+#endregion debug
 
 
 
@@ -800,7 +710,7 @@ public class Search
         //     }
         // }
 
-#endregion
+#endregion debug
         if(inCheck && legalMovesPlayed == 0)
         {
             return -100000 + ply;
@@ -812,12 +722,10 @@ public class Search
 
         // return alpha;
     }
+#endregion quiescencese
 
 
 
-
-
-    //Helper function
     public void PrintPrincipalVariation()
     {
         Console.Write("Best Line: ");
@@ -868,7 +776,7 @@ public class Search
             return Evaluation.mvvLva[movingPieceIndex, capturedPieceIndex];
         }
 
-        if (capturedPieceType == -1) //add scores to killer moves
+        if (capturedPieceType == -1) //add scores to quiet moves
         {
             if (move.Value == killerMoves[ply, 0])
             {
@@ -878,6 +786,7 @@ public class Search
             {
                 return 80;
             }
+            return (historyMoves[board.pieceOnSquare[move.StartSquare], move.TargetSquare] * 79) >> 14;
         }
         
         return 0;
