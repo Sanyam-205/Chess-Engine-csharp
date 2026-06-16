@@ -36,6 +36,7 @@ public static class UCIUtility
                     TT.Clear();
                     search.gameKillerMovesHit = 0;
                     search.gameKillerMovesProbed = 0;
+                    search.ClearHistory();
                     break;
 
                 case "position":

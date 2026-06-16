@@ -87,7 +87,13 @@ public class Search
         ttMoveBest = 0;
         killerMovesHit = 0;
         killerMovesProbed = 0;
+        gameKillerMovesHit = 0;
+        gameKillerMovesProbed = 0;
+        historyHit = 0;
+        historyProbed = 0;
+
         Array.Clear(killerMoves, 0, killerMoves.Length);
+        Array.Clear(historyMoves, 0, historyMoves.Length);
         return NegaMax(board, moveGenerator, evaluation, depth, alpha, beta, ply);
     }
 
@@ -96,6 +102,7 @@ public class Search
     public long ttMoveBest;
     public long killerMovesHit, killerMovesProbed;
     public long gameKillerMovesHit, gameKillerMovesProbed;
+    public long historyHit, historyProbed;
 
 
     public int NegaMax(Board board, MoveGenerator moveGenerator, Evaluation evaluation, int depth, int alpha, int beta, int ply) 
@@ -208,7 +215,7 @@ public class Search
             //========================================================================================================
 
             
-            // moveScore[i] = ScoreMove(newMove, board);
+            // moveScore[i] = ScoreMove(newMove, board, ply);
 
         }
 
@@ -256,10 +263,16 @@ public class Search
 
             bool isQuietMove = board.pieceOnSquare[move.TargetSquare] == -1 && move.Flag != (int)Move.MoveFlag.enPassantCapture;
             bool isKiller = (move.Value != 0) && (move.Value == killerMoves[ply, 0] || move.Value == killerMoves[ply, 1]);
+            bool isHistory = isQuietMove && !isKiller;
+
             if (isKiller)
             {
                 killerMovesProbed++;
                 gameKillerMovesProbed++;
+            }
+            else if (isHistory)
+            {
+                historyProbed++;
             }
 
 
@@ -362,6 +375,10 @@ public class Search
                 {
                     killerMovesHit++;
                     gameKillerMovesHit++;
+                }
+                else if (isHistory)
+                {
+                    historyHit++;
                 }
                 
                 /*Beta cutoff in alpha beta pruning and TT are somewhat different. 
@@ -848,7 +865,10 @@ public class Search
         ttMoveBest = 0;
         killerMovesHit = 0;
         killerMovesProbed = 0;
+        historyHit = 0;
+        historyProbed = 0;
         Array.Clear(killerMoves, 0, killerMoves.Length);
+        Array.Clear(historyMoves, 0, historyMoves.Length);
 
         int infinity = 500000; 
         Move bestMove = new Move(0);
@@ -880,6 +900,7 @@ public class Search
             double hitRate = ttProbes > 0 ? (100.0 * ttHits / ttProbes) : 0;
             double killerHitRate = killerMovesProbed > 0 ? (100.0 * killerMovesHit / killerMovesProbed) : 0;
             double gameKillerHitRate = gameKillerMovesProbed > 0 ? (100.0 * gameKillerMovesHit / gameKillerMovesProbed) : 0;
+            double historyHitRate = historyProbed > 0 ? (100.0 * historyHit / historyProbed) : 0;
 
             //Print info to the UCI GUI 
             // Console.WriteLine($"info string TT Probes: {ttProbes} | TT Hits: {ttHits} | TT Cutoffs: {ttCutoffs} | Hit Rate: {hitRate:F2}%");
@@ -890,24 +911,24 @@ public class Search
             //==============================Logging code===================================
             //DISABLE IT IN BENCHMARK RUNS
             
-            // if (currentDepth == 8)
-            // {
-            //     string engineFolder = AppDomain.CurrentDomain.BaseDirectory;
+            if (currentDepth == 8)
+            {
+                string engineFolder = AppDomain.CurrentDomain.BaseDirectory;
                 
-            //     // 1. Get the unique Operating System Process ID for this running instance
-            //     int pid = System.Diagnostics.Process.GetCurrentProcess().Id;
+                // 1. Get the unique Operating System Process ID for this running instance
+                int pid = System.Diagnostics.Process.GetCurrentProcess().Id;
                 
-            //     // 2. Embed the PID directly into the filename so instances never collide
-            //     string filePath = Path.Combine(engineFolder, $"node_counts_depth8_pid_{pid}.csv");
+                // 2. Embed the PID directly into the filename so instances never collide
+                string filePath = Path.Combine(engineFolder, $"node_counts_depth8_pid_{pid}.csv");
 
-            //     // 3. Standard write check
-            //     if (!System.IO.File.Exists(filePath))
-            //     {
-            //         System.IO.File.WriteAllText(filePath, "Depth,Nodes,TimeMs,SearchKillerHitRate,GameKillerHitRate\n");
-            //     }
+                // 3. Standard write check
+                if (!System.IO.File.Exists(filePath))
+                {
+                    System.IO.File.WriteAllText(filePath, "Depth,Nodes,TimeMs,HistoryHitRate\n");
+                }
 
-            //     System.IO.File.AppendAllText(filePath, $"8,{totalNodes},{timeMs},{killerHitRate:F2},{gameKillerHitRate:F2}\n");
-            // }
+                System.IO.File.AppendAllText(filePath, $"8,{totalNodes},{timeMs},{historyHitRate:F2}\n");
+            }
 
             // DISABLE IT IN BENCHMARK RUNS
             //==============================Logging code===================================
@@ -917,6 +938,13 @@ public class Search
         }
 
         return bestMove;
+    }
+
+    public void ClearHistory()
+    {
+        Array.Clear(historyMoves, 0, historyMoves.Length);
+
+        Array.Clear(historyMoves, 0, historyMoves.Length);
     }
 
 

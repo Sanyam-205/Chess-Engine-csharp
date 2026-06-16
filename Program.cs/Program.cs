@@ -7,7 +7,6 @@ using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
 using static Board;
 using System.IO.Pipelines;
-
 class Program
 {
     static void Main()
@@ -30,15 +29,28 @@ class Program
         // perft2 - middlegame (perft)
         // fen13 - endgame (mine)
 
-        // string fen = TestPositions.fen0;
+        // string fen = TestPositions.perft6;
         // FenUtility.LoadFromFen(fen, board);
+        
+        // int searchDepth = 8;
+        // int infinity = 500000;
+        
+        // Stopwatch stopwatch = new Stopwatch();
+        // stopwatch.Start();
+        // int loopCount = 5;
+        // for(int i = 0; i<loopCount; i++)
+        // {
+        //     TT.Clear();
+        //     int eval = search.StartSearch(board, moveGenerator, evaluation, searchDepth, -infinity, infinity, 0);
+        // }
+        // stopwatch.Stop();
+        // Console.WriteLine($"NodeCount = {search.nodeCount + search.qNodes:N0}\nAverage time = {stopwatch.Elapsed.TotalMilliseconds / loopCount:N0}ms\nNPS = {(search.nodeCount+search.qNodes) / (stopwatch.Elapsed.TotalSeconds / loopCount):N0}");
+        // // Program.cs (C# Top-Level Statements)
+        
 
 
         
-        // int searchDepth = 6;
-        // int infinity = 9999999;
-        
-        // int eval = search.StartSearch(board, moveGenerator, evaluation, searchDepth, -infinity, infinity, 0);
+
 
         // Console.WriteLine($"Evaluation: {eval}");
         // search.PrintPrincipalVariation();
@@ -97,7 +109,7 @@ class Program
 
         // string[] crashTest =
         // {
-        
+        //
         // "position startpos",
         // "go depth 6",  
         // "position startpos moves b1c3 d7d5",
@@ -198,7 +210,7 @@ class Program
         
         
         // Console.SetIn(new System.IO.StreamReader(Console.OpenStandardInput()));// Restore standard input for normal console usage
-
+        
 
         /*
         // Stopwatch stopwatch = new Stopwatch();
