@@ -413,24 +413,30 @@ public class Search
                         killerMoves[ply, 0] = move.Value; //store the move.value to killermove[ply,0]
                     }
 
-                    historyMoves[board.pieceOnSquare[move.StartSquare], move.TargetSquare] += depth * depth; //assign an internal history score which will be given a move ordering score in ScoreMove
+                    // int bonus = depth * depth;
 
+                    // historyMoves[board.pieceOnSquare[move.StartSquare], move.TargetSquare] += bonus; //assign an internal history score which will be given a move ordering score in ScoreMove
 
-                    for (int k = 0; k < quietMoveCount; k++)
-                    {
-                        Move penalizedMove = quietMoveList[k];
-                    
-                        int piece = board.pieceOnSquare[penalizedMove.StartSquare];
-                        int square = penalizedMove.TargetSquare;
-
-                        int tempScore = historyMoves[piece, square] - depth * depth;
-
-                        historyMoves[piece, square] = (tempScore < 0) ? 0 : tempScore;
-                    }
+                    // if(historyMoves[board.pieceOnSquare[move.StartSquare], move.TargetSquare ] >= 16384)
+                    // {
+                    //     AgeHistoryTable(); //divide the entire history table by 2 so that the raw score never exceeds 16384
+                    // }
                 }
 
+                // Penalize quiet moves that failed to cause a cutoff regardless of the cutoff move type
+                for (int k = 0; k < quietMoveCount; k++)
+                {
+                    Move penalizedMove = quietMoveList[k];
+                
+                    int piece = board.pieceOnSquare[penalizedMove.StartSquare];
+                    int square = penalizedMove.TargetSquare;
 
-                //=========================killer move + history heuristics==================================
+                    int tempScore = historyMoves[piece, square] - depth * depth;
+
+                    historyMoves[piece, square] = (tempScore < 0) ? 0 : tempScore;
+                }
+
+                //=========================killer move + history heuristics end==================================
 
                 int ttScore = score;
                 if (ttScore > 90000 && ttScore < 400000) ttScore += ply;
@@ -521,8 +527,6 @@ public class Search
         return bestScore;
     }
 
-
-#region quiescence
     public int Quiescence (Board board, MoveGenerator moveGenerator, Evaluation evaluation, int alpha, int beta, int ply)
     {
         qNodes++;
@@ -739,8 +743,6 @@ public class Search
 
         // return alpha;
     }
-#endregion quiescencese
-
 
 
     public void PrintPrincipalVariation()
@@ -762,15 +764,6 @@ public class Search
         // int[] pieceValues = {5, 3, 3, 9, 10000, 1, 5, 3, 3, 9, 10000, 1};
         int[] pieceTypeMap = {0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5}; //rook, knight, bishop, queen, king, pawn
 
-        if((move.Flag >= (int)Move.MoveFlag.promoteToQueen) && (move.Flag <= (int)Move.MoveFlag.promoteToBishop))
-        {
-            return 500; //Will fine tune this value later.
-        }
-        if((move.Flag >= (int)Move.MoveFlag.whiteKingSideCastle) && (move.Flag <= (int)Move.MoveFlag.blackQueenSideCastle))
-        {
-            return 50; //will fine tune this value later.
-        }
-
         int movingPiece = board.pieceOnSquare[move.StartSquare];
         int capturedPieceType = board.pieceOnSquare[move.TargetSquare];
         //pieceOnSquare stores the piece type for every square. If there is a white queen on index 12 that is e2, then the 12th element in this array would be 3 since 3 is the WhiteQueen value on piece enum.
@@ -778,6 +771,16 @@ public class Search
         if(move.Flag == (int)Move.MoveFlag.enPassantCapture)
         {
             capturedPieceType = (int)Board.Piece.WhitePawns + (board.colorToMove^1) * 6;
+        }
+
+        if((move.Flag >= (int)Move.MoveFlag.promoteToQueen) && (move.Flag <= (int)Move.MoveFlag.promoteToBishop))
+        {
+            int promotionScore = 500;
+            if(capturedPieceType != -1)
+            {
+                promotionScore += Evaluation.mvvLva[pieceTypeMap[movingPiece], pieceTypeMap[capturedPieceType]];
+            }
+            return promotionScore; 
         }
 
         if(capturedPieceType != -1)
@@ -803,7 +806,13 @@ public class Search
             {
                 return 80;
             }
-            return (historyMoves[board.pieceOnSquare[move.StartSquare], move.TargetSquare] * 79) >> 14;
+            
+            if((move.Flag >= (int)Move.MoveFlag.whiteKingSideCastle) && (move.Flag <= (int)Move.MoveFlag.blackQueenSideCastle))
+            {
+                return 79; 
+            }
+            
+            return (historyMoves[board.pieceOnSquare[move.StartSquare], move.TargetSquare] * 78) >> 14;
         }
         
         return 0;
@@ -911,24 +920,24 @@ public class Search
             //==============================Logging code===================================
             //DISABLE IT IN BENCHMARK RUNS
             
-            if (currentDepth == 8)
-            {
-                string engineFolder = AppDomain.CurrentDomain.BaseDirectory;
+            // if (currentDepth == 8)
+            // {
+            //     string engineFolder = AppDomain.CurrentDomain.BaseDirectory;
                 
-                // 1. Get the unique Operating System Process ID for this running instance
-                int pid = System.Diagnostics.Process.GetCurrentProcess().Id;
+            //     // 1. Get the unique Operating System Process ID for this running instance
+            //     int pid = System.Diagnostics.Process.GetCurrentProcess().Id;
                 
-                // 2. Embed the PID directly into the filename so instances never collide
-                string filePath = Path.Combine(engineFolder, $"node_counts_depth8_pid_{pid}.csv");
+            //     // 2. Embed the PID directly into the filename so instances never collide
+            //     string filePath = Path.Combine(engineFolder, $"node_counts_depth8_pid_{pid}.csv");
 
-                // 3. Standard write check
-                if (!System.IO.File.Exists(filePath))
-                {
-                    System.IO.File.WriteAllText(filePath, "Depth,Nodes,TimeMs,HistoryHitRate\n");
-                }
+            //     // 3. Standard write check
+            //     if (!System.IO.File.Exists(filePath))
+            //     {
+            //         System.IO.File.WriteAllText(filePath, "Depth,Nodes,TimeMs,HistoryHitRate\n");
+            //     }
 
-                System.IO.File.AppendAllText(filePath, $"8,{totalNodes},{timeMs},{historyHitRate:F2}\n");
-            }
+            //     System.IO.File.AppendAllText(filePath, $"8,{totalNodes},{timeMs},{historyHitRate:F2}\n");
+            // }
 
             // DISABLE IT IN BENCHMARK RUNS
             //==============================Logging code===================================
@@ -940,11 +949,27 @@ public class Search
         return bestMove;
     }
 
+    
+    void AgeHistoryTable()
+    {
+        int numPieces = historyMoves.GetLength(0);
+        int numSquares = historyMoves.GetLength(1);
+
+        for (int p = 0; p < numPieces; p++)
+        {
+            for (int sq = 0; sq < numSquares; sq++)
+            {
+                // Divide the score by 2
+                historyMoves[p, sq] >>= 1; 
+            }
+        }
+    }
+
     public void ClearHistory()
     {
         Array.Clear(historyMoves, 0, historyMoves.Length);
 
-        Array.Clear(historyMoves, 0, historyMoves.Length);
+        Array.Clear(killerMoves, 0, killerMoves.Length);
     }
 
 
