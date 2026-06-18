@@ -22,14 +22,20 @@ public class Evaluation
         int blackMiddlegameScore = 0;
         int blackEndgameScore = 0;
 
+#region knight
         ulong whiteKnights = board.pieceBitboards[(int)Piece.WhiteKnights];
         while(whiteKnights!=0)
         {
             int squareIndex = BitOperations.TrailingZeroCount(whiteKnights);
 
+            ulong knightAttacks = AttackTables.knightAttacks[squareIndex] & ~ (board.colorBitboard[(int)PieceTeam.WhitePieces] | board.pieceBitboards[(int)Piece.BlackKing]);
+
+            int attackSquares = BitOperations.PopCount(knightAttacks);
+    
+
             //Adding positional scores based on PST
-            whiteMiddlegameScore += PST_Knight[squareIndex] + 330;
-            whiteEndgameSCore += PST_Knight[squareIndex] + 310;
+            whiteMiddlegameScore += PST_Knight[squareIndex] + knightMobility_middlegame[attackSquares] + 330;
+            whiteEndgameSCore += PST_Knight[squareIndex] +    knightMobility_endgame[attackSquares] + 320;
 
             whiteKnights &= whiteKnights -1;
         }
@@ -39,21 +45,33 @@ public class Evaluation
         {
             int squareIndex = BitOperations.TrailingZeroCount(blackKnights);
 
+            ulong knightAttacks = AttackTables.knightAttacks[squareIndex] & ~ (board.colorBitboard[(int)PieceTeam.BlackPieces] | board.pieceBitboards[(int)Piece.WhiteKing]);
+
+            int attackSquares = BitOperations.PopCount(knightAttacks);
+
             //Adding positional scores based on PST
-            blackMiddlegameScore += PST_Knight[squareIndex] + 330;
-            blackEndgameScore += PST_Knight[squareIndex] + 310;
+            blackMiddlegameScore += PST_Knight[squareIndex] + knightMobility_middlegame[attackSquares] + 330;
+            blackEndgameScore += PST_Knight[squareIndex] + knightMobility_endgame[attackSquares] + 320;
 
             blackKnights &= blackKnights -1;
         }
-        
+#endregion knight
+
+#region bishop
         ulong whiteBishops = board.pieceBitboards[(int)Piece.WhiteBishops];
         while(whiteBishops!=0)
         {
             int squareIndex = BitOperations.TrailingZeroCount(whiteBishops);
 
-            //Adding positional scores based on PST
-            whiteMiddlegameScore += PST_Bishop[squareIndex] + 340;
-            whiteEndgameSCore += PST_Bishop[squareIndex] + 340;
+            ulong rawAttacks = AttackTables.GetBishopAttacks(squareIndex, board.AllPieces);
+            //we or the white piece bitboard with black king because a bishop can't actually step onto the enemy king's square so it might skew the mobility bonus.
+            ulong bishopAttacks = rawAttacks & ~(board.colorBitboard[(int)PieceTeam.WhitePieces] | board.pieceBitboards[(int)Piece.BlackKing]); 
+
+            int attackSquares = BitOperations.PopCount(bishopAttacks);
+
+            //Adding positional scores based on PST + mobility
+            whiteMiddlegameScore += PST_Bishop[squareIndex] + bishopMobility_middlegame[attackSquares] + 340;
+            whiteEndgameSCore += PST_Bishop[squareIndex] + bishopMobility_endgame[attackSquares] + 340;
 
             whiteBishops &= whiteBishops -1;
         }
@@ -63,20 +81,35 @@ public class Evaluation
         {
             int squareIndex = BitOperations.TrailingZeroCount(blackBishops);
 
+            ulong rawAttacks = AttackTables.GetBishopAttacks(squareIndex, board.AllPieces);
+            //we or the white piece bitboard with black king because a bishop can't actually step onto the enemy king's square so it might skew the mobility bonus.
+            ulong bishopAttacks = rawAttacks & ~(board.colorBitboard[(int)PieceTeam.BlackPieces] | board.pieceBitboards[(int)Piece.WhiteKing]); 
+
+            int attackSquares = BitOperations.PopCount(bishopAttacks);
+
+
             //Adding positional scores based on PST
-            blackMiddlegameScore += PST_Bishop[squareIndex] + 340;
-            blackEndgameScore += PST_Bishop[squareIndex] + 340;
+            blackMiddlegameScore += PST_Bishop[squareIndex] + bishopMobility_middlegame[attackSquares] +340;
+            blackEndgameScore += PST_Bishop[squareIndex] + bishopMobility_endgame[attackSquares] +340;
 
             blackBishops &= blackBishops -1;
         }
+#endregion bishop
 
+
+#region rook
         ulong whiteRooks = board.pieceBitboards[(int)Piece.WhiteRooks];
         while(whiteRooks!=0)
         {
             int squareIndex = BitOperations.TrailingZeroCount(whiteRooks);
 
-            whiteMiddlegameScore+= PST_Rook[squareIndex] + 500;
-            whiteEndgameSCore += PST_Rook[squareIndex] + 500;
+            ulong rawAttacks = AttackTables.GetRookAttacks(squareIndex, board.AllPieces);
+            ulong rookAttacks = rawAttacks & ~(board.colorBitboard[(int)PieceTeam.WhitePieces] | board.pieceBitboards[(int) Piece.BlackKing]);
+
+            int attackSquares = BitOperations.PopCount(rookAttacks);
+
+            whiteMiddlegameScore+= PST_Rook[squareIndex] + rookMobility_middlegame[attackSquares] +500;
+            whiteEndgameSCore += PST_Rook[squareIndex] +   rookMobility_endgame[attackSquares] + 500;
 
             whiteRooks &= whiteRooks - 1;
         }
@@ -86,19 +119,32 @@ public class Evaluation
         {
             int squareIndex = BitOperations.TrailingZeroCount(blackRooks);
 
-            blackEndgameScore += PST_Rook [squareIndex] + 500;
-            blackMiddlegameScore += PST_Rook [squareIndex] + 500;
+            ulong rawAttacks = AttackTables.GetRookAttacks(squareIndex, board.AllPieces);
+            ulong rookAttacks = rawAttacks & ~(board.colorBitboard[(int)PieceTeam.BlackPieces] | board.pieceBitboards[(int) Piece.WhiteKing]);
+
+            int attackSquares = BitOperations.PopCount(rookAttacks);
+
+            blackEndgameScore += PST_Rook [squareIndex] + rookMobility_middlegame[attackSquares] + 500;
+            blackMiddlegameScore += PST_Rook [squareIndex] + rookMobility_endgame[attackSquares] +  500;
 
             blackRooks &= blackRooks -1;
         }
+#endregion rook
 
+
+#region  queen
         ulong whiteQueens = board.pieceBitboards[(int)Piece.WhiteQueens];
         while(whiteQueens != 0)
         {
             int squareIndex = BitOperations.TrailingZeroCount(whiteQueens);
 
-            whiteMiddlegameScore += PST_Queen[squareIndex] + 900;
-            whiteEndgameSCore += PST_Queen[squareIndex] + 900;
+            ulong rawAttacks = AttackTables.GetQueenAttacks(squareIndex, board.AllPieces);
+            ulong queenAttacks = rawAttacks & ~(board.colorBitboard[(int) PieceTeam.WhitePieces] | board.pieceBitboards[(int) Piece.BlackKing]);
+
+            int attackSquares = BitOperations.PopCount(queenAttacks);
+
+            whiteMiddlegameScore += PST_Queen[squareIndex] + queenMobility_middlegame[attackSquares] +900;
+            whiteEndgameSCore += PST_Queen[squareIndex] +    queenMobility_endgame[attackSquares] + 900;
 
             whiteQueens &= whiteQueens - 1;
 
@@ -109,13 +155,21 @@ public class Evaluation
         {
             int squareIndex = BitOperations.TrailingZeroCount(blackQueens);
 
-            blackMiddlegameScore += PST_Queen[squareIndex] + 900;
-            blackEndgameScore += PST_Queen[squareIndex] + 900;
+            ulong rawAttacks = AttackTables.GetQueenAttacks(squareIndex, board.AllPieces);
+            ulong queenAttacks = rawAttacks & ~(board.colorBitboard[(int) PieceTeam.BlackPieces] | board.pieceBitboards[(int) Piece.WhiteKing]);
+
+            int attackSquares = BitOperations.PopCount(queenAttacks);
+
+            blackMiddlegameScore += PST_Queen[squareIndex] + queenMobility_middlegame[attackSquares] + 900;
+            blackEndgameScore += PST_Queen[squareIndex] + queenMobility_endgame[attackSquares] + 900;
 
 
             blackQueens &= blackQueens - 1;    
         }
+#endregion queen
 
+
+#region pawns
         ulong whitePawns = board.pieceBitboards[(int)Piece.WhitePawns];
         while(whitePawns!=0)
         {
@@ -137,7 +191,10 @@ public class Evaluation
 
             blackPawns &= blackPawns -1;
         }
+#endregion pawns
 
+
+#region king
         ulong whiteKing = board.pieceBitboards[(int)Piece.WhiteKing];
         while(whiteKing != 0)
         {
@@ -159,6 +216,8 @@ public class Evaluation
 
             blackKing &= blackKing-1;
         }
+#endregion king
+
 
         int netMiddlegame = whiteMiddlegameScore - blackMiddlegameScore;
         int netEndgame = whiteEndgameSCore - blackEndgameScore;
@@ -189,7 +248,47 @@ public class Evaluation
         return score;
     }
 
+    public static readonly int[] bishopMobility_middlegame =
+    {
+      // bonus or penalties for number of squares a bishop attacks
+      -25, -11, -4, 0, 3, 7, 11, 15, 18, 21, 23, 25, 26, 27
+    };
+    public static readonly int[] bishopMobility_endgame =
+    {
+      -30, -14, -4, 2, 7, 13, 19, 24, 29, 33, 36, 38, 40, 41
+    };
     
+    public static readonly int[] rookMobility_middlegame =
+    {
+        -4, -2, 0, 1, 3, 5, 7, 9, 11, 12, 13, 14, 14, 14, 14
+    };
+    
+    public static readonly int[] rookMobility_endgame =
+    {
+        -15, -10, -5, -1, 2, 5, 8, 11, 14, 17, 19, 21, 22, 23, 24
+    };
+
+    public static readonly int[] queenMobility_middlegame = 
+    { 
+        -30, -20, -10, -5, -1, 1, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25 
+    };
+
+    public static readonly int[] queenMobility_endgame = 
+    { 
+        -45, -30, -15, -4, 4, 12, 18, 23, 27, 30, 33, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51 
+    };
+
+    public static readonly int[] knightMobility_middlegame = 
+    { 
+        -20, -10, -5, 0, 3, 6, 9, 11, 12 
+    };
+
+    public static readonly int[] knightMobility_endgame = 
+    { 
+        -25, -12, -6, 0, 4, 8, 12, 15, 17 
+    };
+    
+
 
     public static readonly int[,] mvvLva = new int[6,6]
     {
