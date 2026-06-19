@@ -325,7 +325,11 @@ public class Evaluation
         {
             int squareIndex = BitOperations.TrailingZeroCount(whiteKing);
 
-            whiteMiddlegameScore += PST_WhiteKing_Starting[squareIndex]; //king is assigned base material evaluation of 0;
+            //====================================castling====================================
+            //check the square the king is on and check for the pawn shield.
+           
+            int pawnPenalty = ExposedKing(board);
+            whiteMiddlegameScore += PST_WhiteKing_Starting[squareIndex] + pawnPenalty; //king is assigned base material evaluation of 0;
             whiteEndgameSCore += PST_King_EndGame[squareIndex];
 
             whiteKing &= whiteKing-1;
@@ -336,7 +340,9 @@ public class Evaluation
         {
             int squareIndex = BitOperations.TrailingZeroCount(blackKing);
 
-            blackMiddlegameScore += PST_BlackKing_Starting[squareIndex];
+            int pawnPenalty = ExposedKing(board);
+
+            blackMiddlegameScore += PST_BlackKing_Starting[squareIndex] + pawnPenalty;
             blackEndgameScore += PST_King_EndGame[squareIndex];
 
             blackKing &= blackKing-1;
@@ -372,6 +378,301 @@ public class Evaluation
 
         return score;
     }
+
+    // static int ExposedKing(Board board, ulong kingBit, ulong pawnBit)
+    // {
+    //     int penalty;
+
+    //     ulong pawnShield = board.pieceBitboards[(int)Piece.WhitePawns + (board.colorToMove * 6)];
+    //     ulong king = board.pieceBitboards[(int)Piece.WhiteKing + (board.colorToMove * 6)];
+
+    //     int kingSquare = BitOperations.TrailingZeroCount(king); //gives the exact king square
+
+    //     if(board.colorToMove == 0)
+    //     {
+    //         if(kingSquare <= 2)
+    //         {
+    //             ulong APawn = pawnShield & fileMask[0];
+    //             ulong BPawn = pawnShield & fileMask[1];
+    //             ulong CPawn = pawnShield & fileMask[2];
+
+    //             int APawnSquare = BitOperations.TrailingZeroCount(APawn);
+    //             int BPawnSquare = BitOperations.TrailingZeroCount(BPawn);
+    //             int CPawnSquare = BitOperations.TrailingZeroCount(CPawn);
+
+    //             int APawnPenalty = whiteExposedKingPenalty[APawnSquare];
+    //             int BPawnPenalty = whiteExposedKingPenalty[BPawnSquare];
+    //             int CPawnPenalty = whiteExposedKingPenalty[CPawnSquare];
+
+    //             if(APawnSquare == 64) APawnPenalty = -25;
+    //             if(BPawnSquare == 64) BPawnPenalty = -60;
+    //             if(CPawnSquare == 64) CPawnPenalty = -35;
+
+    //             penalty = APawnPenalty + BPawnPenalty + CPawnPenalty;
+    //             return penalty;
+
+    //         }
+    //         if(kingSquare >= 5 && kingSquare <=7)
+    //         {
+    //             ulong FPawn = pawnShield & fileMask[5];
+    //             ulong GPawn = pawnShield & fileMask[6];
+    //             ulong HPawn = pawnShield & fileMask[7];
+
+    //             int FPawnSquare = BitOperations.TrailingZeroCount(FPawn);
+    //             int GPawnSquare = BitOperations.TrailingZeroCount(GPawn);
+    //             int HPawnSquare = BitOperations.TrailingZeroCount(HPawn);
+
+    //             int FPawnPenalty = whiteExposedKingPenalty[FPawnSquare];
+    //             int GPawnPenalty = whiteExposedKingPenalty[GPawnSquare];
+    //             int HPawnPenalty = whiteExposedKingPenalty[HPawnSquare];
+
+    //             if(FPawnSquare == 64) FPawnPenalty = -25;
+    //             if(GPawnSquare == 64) GPawnPenalty = -60;
+    //             if(HPawnSquare == 64) HPawnPenalty = -35;
+
+    //             penalty = FPawnPenalty + GPawnPenalty + HPawnPenalty;
+    //             return penalty;
+    //         }
+    //     }
+    //     else if(board.colorToMove == 1)
+    //     {
+    //         if(kingSquare >=56 && kingSquare <=58)
+    //         {
+    //             ulong APawn = pawnShield & fileMask[0];
+    //             ulong BPawn = pawnShield & fileMask[1];
+    //             ulong CPawn = pawnShield & fileMask[2];
+
+    //             int APawnSquare = BitOperations.TrailingZeroCount(APawn);
+    //             int BPawnSquare = BitOperations.TrailingZeroCount(BPawn);
+    //             int CPawnSquare = BitOperations.TrailingZeroCount(CPawn);
+
+    //             int APawnPenalty = blackExposedKingPenalty[APawnSquare];
+    //             int BPawnPenalty = blackExposedKingPenalty[BPawnSquare];
+    //             int CPawnPenalty = blackExposedKingPenalty[CPawnSquare];
+
+    //             if(APawnSquare == 64) APawnPenalty = -25;
+    //             if(BPawnSquare == 64) BPawnPenalty = -60;
+    //             if(CPawnSquare == 64) CPawnPenalty = -35;
+
+    //             penalty = APawnPenalty + BPawnPenalty + CPawnPenalty;
+    //             return penalty;
+    //         }
+    //         if(kingSquare >= 61 && kingSquare <=63)
+    //         {
+    //             ulong FPawn = pawnShield & fileMask[5];
+    //             ulong GPawn = pawnShield & fileMask[6];
+    //             ulong HPawn = pawnShield & fileMask[7];
+
+    //             int FPawnSquare = BitOperations.TrailingZeroCount(FPawn);
+    //             int GPawnSquare = BitOperations.TrailingZeroCount(GPawn);
+    //             int HPawnSquare = BitOperations.TrailingZeroCount(HPawn);
+
+    //             int FPawnPenalty = whiteExposedKingPenalty[FPawnSquare];
+    //             int GPawnPenalty = whiteExposedKingPenalty[GPawnSquare];
+    //             int HPawnPenalty = whiteExposedKingPenalty[HPawnSquare];
+
+    //             if(FPawnSquare == 64) FPawnPenalty = -25;
+    //             if(GPawnSquare == 64) GPawnPenalty = -60;
+    //             if(HPawnSquare == 64) HPawnPenalty = -35;
+
+    //             penalty = FPawnPenalty + GPawnPenalty + HPawnPenalty;
+    //             return penalty;
+    //         }
+    //     }
+
+    //     return 0;    
+    
+    // }
+
+
+    static int ExposedKing(Board board)
+    {
+        int color = board.colorToMove; 
+        
+        ulong pawnShield = board.pieceBitboards[(int)Piece.WhitePawns + (color * 6)];
+        ulong king = board.pieceBitboards[(int)Piece.WhiteKing + (color * 6)];
+        int kingSquare = BitOperations.TrailingZeroCount(king);
+
+        int penalty = 0;
+
+        if (color == 0) 
+        {
+            // Queenside (a1-c1 area)
+            if (kingSquare <= 2)
+            {
+                ulong APawn = pawnShield & fileMask[0];
+                ulong BPawn = pawnShield & fileMask[1];
+                ulong CPawn = pawnShield & fileMask[2];
+
+                int aSq = BitOperations.TrailingZeroCount(APawn);
+                int bSq = BitOperations.TrailingZeroCount(BPawn);
+                int cSq = BitOperations.TrailingZeroCount(CPawn);
+
+                if(aSq == 64)
+                {
+                    penalty += -25;
+                    if((fileMask[0] & board.pieceBitboards[(int)Piece.BlackPawns]) == 0) penalty += -15;
+                }
+                else penalty+= whiteExposedKingPenalty[aSq];
+
+                if(bSq == 64)
+                {
+                    penalty += -60;
+                    if((fileMask[1] & board.pieceBitboards[(int)Piece.BlackPawns]) == 0) penalty += -20;
+                }
+                else penalty += whiteExposedKingPenalty[bSq];
+
+                if(cSq == 64)
+                {
+                    penalty += -35;
+                    if((fileMask[2] & board.pieceBitboards[(int)Piece.BlackPawns] )== 0) penalty += -15;
+                }
+                else penalty += whiteExposedKingPenalty[cSq];
+
+
+
+
+                return penalty;
+            }
+            // Kingside (f1-h1 area)
+            else if (kingSquare >= 5 && kingSquare <= 7)
+            {
+                ulong FPawn = pawnShield & fileMask[5];
+                ulong GPawn = pawnShield & fileMask[6];
+                ulong HPawn = pawnShield & fileMask[7];
+
+                int fSq = BitOperations.TrailingZeroCount(FPawn);
+                int gSq = BitOperations.TrailingZeroCount(GPawn);
+                int hSq = BitOperations.TrailingZeroCount(HPawn);
+
+                if(hSq == 64)
+                {
+                    penalty += -25;
+                    if((fileMask[7] & board.pieceBitboards[(int)Piece.BlackPawns]) == 0) penalty += -15;
+                }
+                else penalty+= whiteExposedKingPenalty[hSq];
+
+                if(gSq == 64)
+                {
+                    penalty += -60;
+                    if((fileMask[6] & board.pieceBitboards[(int)Piece.BlackPawns]) == 0) penalty += -20;
+                }
+                else penalty += whiteExposedKingPenalty[gSq];
+
+                if(fSq == 64)
+                {
+                    penalty += -35;
+                    if((fileMask[5] & board.pieceBitboards[(int)Piece.BlackPawns] )== 0) penalty += -15;
+                }
+                else penalty += whiteExposedKingPenalty[fSq];
+
+
+                return penalty;
+            }
+        }
+        else 
+        {
+            // Queenside (a8-c8 area)
+            if (kingSquare >= 56 && kingSquare <= 58)
+            {
+                ulong APawn = pawnShield & fileMask[0];
+                ulong BPawn = pawnShield & fileMask[1];
+                ulong CPawn = pawnShield & fileMask[2];
+
+                // Use LeadingZeroCount for Black to find the pawn furthest down the board
+                int aSq = (APawn == 0) ? 64 : 63 - BitOperations.LeadingZeroCount(APawn);
+                int bSq = (BPawn == 0) ? 64 : 63 - BitOperations.LeadingZeroCount(BPawn);
+                int cSq = (CPawn == 0) ? 64 : 63 - BitOperations.LeadingZeroCount(CPawn);
+
+                
+                if(aSq == 64)
+                {
+                    penalty += -25;
+                    if((fileMask[0] & board.pieceBitboards[(int)Piece.WhitePawns]) == 0) penalty += -15;
+                }
+                else penalty+= blackExposedKingPenalty[aSq];
+
+                if(bSq == 64)
+                {
+                    penalty += -60;
+                    if((fileMask[1] & board.pieceBitboards[(int)Piece.WhitePawns]) == 0) penalty += -20;
+                }
+                else penalty += blackExposedKingPenalty[bSq];
+
+                if(cSq == 64)
+                {
+                    penalty += -35;
+                    if((fileMask[2] & board.pieceBitboards[(int)Piece.WhitePawns] )== 0) penalty += -15;
+                }
+                else penalty += blackExposedKingPenalty[cSq];
+
+
+
+                return penalty;
+            }
+            // Kingside (f8-h8 area)
+            else if (kingSquare >= 61 && kingSquare <= 63)
+            {
+                ulong FPawn = pawnShield & fileMask[5];
+                ulong GPawn = pawnShield & fileMask[6];
+                ulong HPawn = pawnShield & fileMask[7];
+
+                int fSq = (FPawn == 0) ? 64 : 63 - BitOperations.LeadingZeroCount(FPawn);
+                int gSq = (GPawn == 0) ? 64 : 63 - BitOperations.LeadingZeroCount(GPawn);
+                int hSq = (HPawn == 0) ? 64 : 63 - BitOperations.LeadingZeroCount(HPawn);
+
+                if(hSq == 64)
+                {
+                    penalty += -25;
+                    if((fileMask[7] & board.pieceBitboards[(int)Piece.WhitePawns]) == 0) penalty += -15;
+                }
+                else penalty+= blackExposedKingPenalty[hSq];
+
+                if(gSq == 64)
+                {
+                    penalty += -60;
+                    if((fileMask[6] & board.pieceBitboards[(int)Piece.WhitePawns]) == 0) penalty += -20;
+                }
+                else penalty += blackExposedKingPenalty[gSq];
+
+                if(fSq == 64)
+                {
+                    penalty += -35;
+                    if((fileMask[5] & board.pieceBitboards[(int)Piece.WhitePawns] )== 0) penalty += -15;
+                }
+                else penalty += blackExposedKingPenalty[fSq];
+
+
+                return penalty;
+            }
+        }
+
+        return 0;    
+    }
+
+    static readonly int[] whiteExposedKingPenalty =
+    {       //a1   b1   c1   d1   e1   f1   g1   h1
+      /*a2*/  0,   0,   0,   0,  0,   0,   0,    0,      //missing -60 = g,b pawn
+      /*a1*/  0,   0,   0,   0,  0,   0,   0,    0,      //missing -35 = f,c pawn
+      /*a3*/ -2,  -5,  -3,   0,  0,  -3,  -5,   -2,      //missing -25 = h,a pawn
+      /*a4*/ -5,  -15,  -8,  0,  0,  -8,  -15,  -5,
+      /*a5*/ -10, -30, -15,  0,  0, -15,  -30, -10,
+      /*a6*/ -20, -50, -25,  0,  0, -25,  -50, -20,       
+      /*a7*/   0,   0,   0,  0,  0,   0,   0,    0,       
+      /*a8*/   0,   0,   0,  0,  0,   0,   0,    0        
+    };
+    static readonly int[] blackExposedKingPenalty =
+    {       //a1 b1 c1 d1 e1 f1 g1 h1
+      /*a2*/  0,   0,   0,   0,  0,   0,   0,    0,      //missing -60 = g pawn
+      /*a1*/  0,   0,   0,   0,  0,   0,   0,    0,      //missing -35 = f pawn
+      /*a3*/ -20, -50, -25,  0,  0, -25,  -50,  -20,      //missing -25 = h pawn
+      /*a4*/ -10, -30, -15,  0,  0, -15,  -30,  -10,
+      /*a5*/  -5, -15,  -8,  0,  0,  -8,  -15,  -5,
+      /*a6*/  -2,  -5,  -3,  0,  0,  -3,  -5,   -2,       
+      /*a7*/   0,   0,   0,  0,  0,   0,   0,    0,       
+      /*a8*/   0,   0,   0,  0,  0,   0,   0,    0        
+    };
+
 
     static readonly int[] whitePassedPawn_Middlegame =
     {
