@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Runtime.CompilerServices;
 using System.Xml;
 using System.Numerics;
+using System.Collections;
 
 public struct BoardState
 {
@@ -24,7 +25,7 @@ public class Board
     public int plyCount = 0, phaseScore;
 
     //combined 64 bit integers for black and white pieces
-    public ulong AllPieces;
+    public ulong occupiedMask;
 
     public int colorToMove, castlingRights;
     public ulong enPassantSquare;
@@ -67,6 +68,9 @@ public class Board
     {
         WhiteRooks, WhiteKnights, WhiteBishops, WhiteQueens, WhiteKing, WhitePawns, BlackRooks, BlackKnights, BlackBishops, BlackQueens, BlackKing, BlackPawns
     }
+
+    public int[] PieceValue = {500, 330, 340, 900, 1000, 100, 500, 330, 340, 900, 1000, 100}; //map the piece value to piece type
+
 
     public static readonly int[] PiecePhaseWeights = 
     {
@@ -159,7 +163,7 @@ public class Board
         if(capturedPiece != -1) 
         {
             phaseScore -= PiecePhaseWeights[capturedPiece];
-            AllPieces &= ~targetMask; // Erase the piece from global occupancy
+            occupiedMask &= ~targetMask; // Erase the piece from global occupancy
 
             /*
                 If a piece moves from square 12 to 20 and captures a piece on square 20, we have to remove the piece at square 20 from global occupancy. Since we do AllPieces ^= moveMask, to update global occupancy, it will work in normal moves (no capture), but in case of captures, it wont work. Why?
@@ -185,7 +189,7 @@ public class Board
             pieceBitboards[rookIndex] ^= rookCastleMasks[move.Flag - 7];
             
             
-            AllPieces ^= rookCastleMasks[move.Flag - 7]; // update occupancy for rook manually   
+            occupiedMask ^= rookCastleMasks[move.Flag - 7]; // update occupancy for rook manually   
             colorBitboard[colorToMove] ^= rookCastleMasks[move.Flag - 7];     
 
             if (move.Flag == (int)Move.MoveFlag.whiteKingSideCastle) 
@@ -258,7 +262,7 @@ public class Board
             phaseScore += PiecePhaseWeights[finalPieceIndex];
 
             // 3. Update global occupancies
-            AllPieces ^= moveMask;
+            occupiedMask ^= moveMask;
             colorBitboard[colorToMove] ^= moveMask1;
 
             // 4. Update the pieceOnSquare array correctly
@@ -278,7 +282,7 @@ public class Board
             int enemyPawn = (colorToMove == 0) ? (int)Piece.BlackPawns : (int)Piece.WhitePawns;
             ulong enPassantVictimMask = (colorToMove == 0) ? targetMask >> 8 : targetMask << 8;
             pieceBitboards[enemyPawn] ^= enPassantVictimMask;
-            AllPieces &= ~enPassantVictimMask; // Erase the pawn from global occupancy. Same logic as normal capture toggle, but since in en passant, the enemy pawn isn't at targetMask but at enPassantVictimMask, we use this.
+            occupiedMask &= ~enPassantVictimMask; // Erase the pawn from global occupancy. Same logic as normal capture toggle, but since in en passant, the enemy pawn isn't at targetMask but at enPassantVictimMask, we use this.
 
             colorBitboard[colorToMove ^ 1] &= ~enPassantVictimMask;
 
@@ -322,7 +326,7 @@ public class Board
 
             pieceBitboards[movingPiece] ^= moveMask; // teleport the piece
         
-            AllPieces ^= moveMask; // updates global occupancy
+            occupiedMask ^= moveMask; // updates global occupancy
 
             colorBitboard[colorToMove] ^= moveMask; // update white or black piece bitboard 
         }
@@ -395,7 +399,7 @@ public class Board
                 
                 int rookIndex = (int)Piece.WhiteRooks + (colorToMove * 6);
                 pieceBitboards[rookIndex] ^= rookCastleMasks[move.Flag - 7];
-                AllPieces ^= rookCastleMasks[move.Flag - 7]; // return the global occupancy
+                occupiedMask ^= rookCastleMasks[move.Flag - 7]; // return the global occupancy
                 colorBitboard[colorToMove] ^= rookCastleMasks[move.Flag - 7];
 
 
@@ -411,7 +415,7 @@ public class Board
                 int pawnTypeToRestore = (colorToMove == 0) ? (int)Piece.BlackPawns : (int)Piece.WhitePawns;
                 ulong enPassantVictimMask = (colorToMove == 0) ? targetMask >> 8 : targetMask << 8;
                 pieceBitboards[pawnTypeToRestore] ^= enPassantVictimMask;
-                AllPieces ^= enPassantVictimMask;
+                occupiedMask ^= enPassantVictimMask;
                 colorBitboard[colorToMove ^ 1] ^= enPassantVictimMask;
 
                 int epVictimSquare = (colorToMove == 0) ? move.TargetSquare - 8 : move.TargetSquare + 8;
@@ -430,7 +434,7 @@ public class Board
 
         pieceBitboards[movingPiece] ^= moveMask; // Remove the piece
 
-        AllPieces ^= moveMask; // Return global occupancy
+        occupiedMask ^= moveMask; // Return global occupancy
         colorBitboard[colorToMove] ^= moveMask; // return specific color occupancy
 
         pieceOnSquare[move.StartSquare] = movingPiece;
@@ -442,7 +446,7 @@ public class Board
         {
             phaseScore += PiecePhaseWeights[prevCapturedPiece];
             pieceBitboards[prevCapturedPiece] |= targetMask;
-            AllPieces ^= targetMask;
+            occupiedMask ^= targetMask;
             colorBitboard[colorToMove ^ 1] ^= targetMask;
 
 
@@ -451,92 +455,7 @@ public class Board
 
         
     }
-
-
-    #region UnMakeMove
-
-    // public void UnMakeMove(Move move)
-    // {
-    //     colorToMove ^= 1;
-    //     plyCount--;
-
-    //     int prevCapturedPiece = history[plyCount].capturedPieceType;
-    //     castlingRights = history[plyCount].castlingRights; // Restore state
-    //     enPassantSquare = history[plyCount].enPassantSquare; // Restore state
-
-    //     int movingPiece = -1;
-
-    //     ulong targetMask = (1UL << move.TargetSquare);
-
-    //     for(int i = 0; i<12; i++)
-    //     {
-
-    //         movingPiece = i;
-
-
-    //         if((targetMask & (pieceBitboards[i])) != 0)
-    //         {
-
-    //             if (move.Flag >= (int)Move.MoveFlag.promoteToQueen && move.Flag <= (int)Move.MoveFlag.promoteToBishop) //promotion
-    //             {
-    //                 //Remove the piece from the move.TargetSquare
-    //                 pieceBitboards[i] ^= targetMask;
-
-    //                 //Place the pawn back on the previous square
-    //                 pieceBitboards[(int)Piece.WhitePawns + (colorToMove * 6)] |= targetMask;
-    //                 movingPiece = (int)Piece.WhitePawns + (colorToMove * 6);
-
-
-    //             }
-
-    //             else if(move.Flag >= (int)Move.MoveFlag.whiteKingSideCastle && move.Flag <= (int)Move.MoveFlag.blackQueenSideCastle) //castle
-    //             {
-
-    //                 int rookIndex = (int)Piece.WhiteRooks + (colorToMove * 6);
-    //                 pieceBitboards[rookIndex] ^= rookCastleMasks[move.Flag - 7];
-    //                 AllPieces ^= rookCastleMasks[move.Flag - 7]; // return the global occupancy
-    //                 colorBitboard[colorToMove] ^= rookCastleMasks[move.Flag - 7];
-    //             }
-
-    //             else if(move.Flag == (int)Move.MoveFlag.enPassantCapture) // en passant
-    //             {
-    //                 int pawnTypeToRestore = (colorToMove == 0) ? (int)Piece.BlackPawns : (int)Piece.WhitePawns;
-    //                 ulong enPassantVictimMask = (colorToMove == 0) ? targetMask >> 8 : targetMask << 8;
-    //                 pieceBitboards[pawnTypeToRestore] ^= enPassantVictimMask;
-    //                 AllPieces ^= enPassantVictimMask;
-    //                 colorBitboard[colorToMove ^ 1] ^= enPassantVictimMask;
-    //             }
-
-
-    //             break;
-
-    //         }
-
-    //     }
-
-    //     ulong moveMask = (1UL << move.StartSquare) | (1UL << move.TargetSquare);
-    //     pieceBitboards[movingPiece] ^= moveMask; // Remove the piece
-
-    //     AllPieces ^= moveMask; // Return global occupancy
-    //     colorBitboard[colorToMove] ^= moveMask;
-
-    //     //Put the piece back
-    //     if(prevCapturedPiece != -1)
-    //     {
-    //         pieceBitboards[prevCapturedPiece] |= targetMask;
-    //         AllPieces ^= targetMask;
-    //         colorBitboard[colorToMove ^ 1] ^= targetMask;
-    //     }
-    // }
-
-    #endregion
-
-
-
-
-
-
-     
+ 
     public bool IsSquareAttacked(int square, int defendingColor)
     {
         //if we have to check for white king is under attack, we use the whitePawnAttack table as pawn mask. 
@@ -586,7 +505,7 @@ public class Board
         
 
         //check if a square is under attack by the sliders
-        ulong diagonalMask = AttackTables.GetBishopAttacks(square, AllPieces);
+        ulong diagonalMask = AttackTables.GetBishopAttacks(square, occupiedMask);
         ulong enemyBishop = pieceBitboards[(int)Piece.WhiteBishops + (enemyColor * 6)];
         ulong enemyQueen = pieceBitboards[(int)Piece.WhiteQueens + (enemyColor * 6)];
         if((diagonalMask & (enemyBishop|enemyQueen)) != 0)
@@ -594,7 +513,7 @@ public class Board
             return true;
         }
 
-        ulong straightMak = AttackTables.GetRookAttacks(square, AllPieces);
+        ulong straightMak = AttackTables.GetRookAttacks(square, occupiedMask);
         ulong enemyRook = pieceBitboards[(int)Piece.WhiteRooks + (enemyColor * 6)];
         if((straightMak &(enemyRook|enemyQueen))!=0)
         {

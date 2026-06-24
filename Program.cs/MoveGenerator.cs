@@ -73,7 +73,7 @@ public class MoveGenerator
         {
             int square = BitOperations.TrailingZeroCount(rooks);
        
-            ulong rawAttacks = AttackTables.GetRookAttacks(square, board.AllPieces);
+            ulong rawAttacks = AttackTables.GetRookAttacks(square, board.occupiedMask);
 
             // ulong pseudoLegalMoves = rawAttacks & ~friendlyPieces;
             ulong pseudoLegalMoves = rawAttacks;
@@ -115,7 +115,7 @@ public class MoveGenerator
         {
             int square = BitOperations.TrailingZeroCount(bishops);
 
-            ulong rawAttacks = AttackTables.GetBishopAttacks(square, board.AllPieces);
+            ulong rawAttacks = AttackTables.GetBishopAttacks(square, board.occupiedMask);
 
             // ulong pseudoLegalMoves = rawAttacks & ~friendlyPieces;
             ulong pseudoLegalMoves = rawAttacks;
@@ -157,7 +157,7 @@ public class MoveGenerator
         while(queens!=0)
         {
             int square = BitOperations.TrailingZeroCount(queens);
-            ulong rawAttacks = AttackTables.GetQueenAttacks(square, board.AllPieces);
+            ulong rawAttacks = AttackTables.GetQueenAttacks(square, board.occupiedMask);
             // ulong pseudoLegalMoves = rawAttacks & ~friendlyPieces;
             
             ulong pseudoLegalMoves = rawAttacks;
@@ -251,13 +251,13 @@ public class MoveGenerator
             {   
                 if (square == 4) // Ensure White King is actually on e1
                 {
-                if(((board.castlingRights & 1) != 0) && ((board.AllPieces & whiteKingSidePath) == 0) && !board.IsSquareAttacked(4, 0) && !board.IsSquareAttacked(5, 0) 
+                if(((board.castlingRights & 1) != 0) && ((board.occupiedMask & whiteKingSidePath) == 0) && !board.IsSquareAttacked(4, 0) && !board.IsSquareAttacked(5, 0) 
                 && !board.IsSquareAttacked(6, 0))
                 {
                     Move castleMove = new Move(4, 6, (int)Move.MoveFlag.whiteKingSideCastle);
                     moveList[moveCount++] = castleMove;
                 }
-                if(((board.castlingRights & 2) != 0) && ((board.AllPieces & whiteQueenSidePath) == 0) && !board.IsSquareAttacked(4, 0) && !board.IsSquareAttacked(2, 0) 
+                if(((board.castlingRights & 2) != 0) && ((board.occupiedMask & whiteQueenSidePath) == 0) && !board.IsSquareAttacked(4, 0) && !board.IsSquareAttacked(2, 0) 
                 && !board.IsSquareAttacked(3, 0))
                 {
                     Move castleMove = new Move(4, 2, (int)Move.MoveFlag.whiteQueenSideCastle);
@@ -269,13 +269,13 @@ public class MoveGenerator
             {   
                 if (square == 60) // Ensure Black King is actually on e8
                 {
-                if(((board.castlingRights & 4) != 0) && ((board.AllPieces & blackKingSidePath) == 0) && !board.IsSquareAttacked(60, 1) && !board.IsSquareAttacked(61, 1) 
+                if(((board.castlingRights & 4) != 0) && ((board.occupiedMask & blackKingSidePath) == 0) && !board.IsSquareAttacked(60, 1) && !board.IsSquareAttacked(61, 1) 
                 && !board.IsSquareAttacked(62, 1))
                 {
                     Move castleMove = new Move(60, 62, (int)Move.MoveFlag.blackKingSideCastle);
                     moveList[moveCount++] = castleMove;
                 }
-                if(((board.castlingRights & 8) != 0) && ((board.AllPieces & blackQueenSidePath) == 0) && !board.IsSquareAttacked(60, 1) 
+                if(((board.castlingRights & 8) != 0) && ((board.occupiedMask & blackQueenSidePath) == 0) && !board.IsSquareAttacked(60, 1) 
                 && !board.IsSquareAttacked(59, 1) && !board.IsSquareAttacked(58, 1))
                 {
                     Move castleMove = new Move(60, 58, (int)Move.MoveFlag.blackQueenSideCastle);
@@ -346,9 +346,9 @@ public class MoveGenerator
             ulong whiteStandardPawn = board.pieceBitboards[(int)Piece.WhitePawns] & notRank7Mask;
             ulong whitePromotingPawn = board.pieceBitboards[(int)Piece.WhitePawns] & rank7Mask;
 
-            ulong whiteSinglePush = (whiteStandardPawn << 8) & ~board.AllPieces;
-            ulong whiteDoublePush = ((whiteSinglePush & rank3Mask) << 8) & ~board.AllPieces;
-            ulong whitePromotionPush = (whitePromotingPawn << 8) & ~board.AllPieces;
+            ulong whiteSinglePush = (whiteStandardPawn << 8) & ~board.occupiedMask;
+            ulong whiteDoublePush = ((whiteSinglePush & rank3Mask) << 8) & ~board.occupiedMask;
+            ulong whitePromotionPush = (whitePromotingPawn << 8) & ~board.occupiedMask;
 
             
 
@@ -499,10 +499,10 @@ public class MoveGenerator
             ulong blackStandardPawns = board.pieceBitboards[(int)Piece.BlackPawns] & notRank2Mask;
             ulong blackPromotingPawns = board.pieceBitboards[(int)Piece.BlackPawns] & rank2Mask;
         
-            ulong blackSinglePush = (blackStandardPawns >> 8) & ~board.AllPieces;
-            ulong blackDoublePush = ((blackSinglePush & rank6Mask) >> 8) & ~board.AllPieces;
+            ulong blackSinglePush = (blackStandardPawns >> 8) & ~board.occupiedMask;
+            ulong blackDoublePush = ((blackSinglePush & rank6Mask) >> 8) & ~board.occupiedMask;
 
-            ulong blackPromotionPush = (blackPromotingPawns >> 8) & ~board.AllPieces;
+            ulong blackPromotionPush = (blackPromotingPawns >> 8) & ~board.occupiedMask;
 
         if(!capturesOnly)
         {

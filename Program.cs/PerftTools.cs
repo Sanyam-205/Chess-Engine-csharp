@@ -131,7 +131,7 @@ public static class PerftTool
 
     public static void AssertNoStateLeak(Board board, Move move) 
     {
-        ulong preAll = board.AllPieces;
+        ulong preAll = board.occupiedMask;
         ulong preWhite = board.colorBitboard[(int)PieceTeam.WhitePieces];
         ulong preBlack = board.colorBitboard[(int)PieceTeam.BlackPieces];
         
@@ -153,7 +153,7 @@ public static class PerftTool
 
         board.UnmakeMove(move);
 
-        if (preAll != board.AllPieces) throw new Exception($"AllPieces leaked on {BoardUtility.MoveToUci(move)}");
+        if (preAll != board.occupiedMask) throw new Exception($"AllPieces leaked on {BoardUtility.MoveToUci(move)}");
         if (preWhite != board.colorBitboard[(int)PieceTeam.WhitePieces]) throw new Exception($"White occupancy leaked on {BoardUtility.MoveToUci(move)}");
         if (preBlack != board.colorBitboard[(int)PieceTeam.BlackPieces]) throw new Exception($"Black occupancy leaked on {BoardUtility.MoveToUci(move)}");
         

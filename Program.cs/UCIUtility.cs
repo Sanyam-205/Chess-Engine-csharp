@@ -38,6 +38,10 @@ public static class UCIUtility
                     search.gameKillerMovesHit = 0;
                     search.gameKillerMovesProbed = 0;
                     search.ClearHistory();
+                    // WriteToFile();
+                    Search.totalSearchNodeCount = 0;
+                    Search.totalQuiescenceNodeCount = 0;
+                    Search.totalNodeCount = 0;
                     break;
 
                 case "position":
@@ -63,7 +67,7 @@ public static class UCIUtility
                 case "perft":
                     if (tokens.Length > 1 && int.TryParse(tokens[1], out int pDepth))
                     {
-                        PerftTool.PerftDivide(board, moveGenerator, pDepth);
+                        PerftTool.Perft(board, moveGenerator, pDepth);
                     }
                     break;
 
@@ -82,6 +86,25 @@ public static class UCIUtility
         }
 
 
+    }
+
+    static void WriteToFile()
+    {
+            string engineFolder = AppDomain.CurrentDomain.BaseDirectory;
+                
+                // 1. Get the unique Operating System Process ID for this running instance
+                int pid = System.Diagnostics.Process.GetCurrentProcess().Id;
+                
+                // 2. Embed the PID directly into the filename so instances never collide
+                string filePath = Path.Combine(engineFolder, $"node_counts_pid_{pid}.csv");
+
+                // 3. Standard write check
+                if (!System.IO.File.Exists(filePath))
+                {
+                    System.IO.File.WriteAllText(filePath, "TotalNodes,QNodes,SearchNodes,Depth\n");
+                }
+
+                System.IO.File.AppendAllText(filePath, $"{Search.totalNodeCount},{Search.totalQuiescenceNodeCount},{Search.totalSearchNodeCount}\n");
     }
 
 

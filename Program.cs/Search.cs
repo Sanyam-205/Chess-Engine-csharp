@@ -1,4 +1,5 @@
 using System;
+using System.Data.Common;
 using System.Linq.Expressions;
 using System.Net;
 using System.Numerics;
@@ -371,6 +372,7 @@ public class Search
 
             //Recursive call for lower depth.
             int score = -NegaMax(board, moveGenerator, evaluation, depth - 1, -beta, -alpha, ply+1);
+            if(abortSearch) return 0;
         
             board.UnmakeMove(move);
 
@@ -541,7 +543,7 @@ public class Search
         return bestScore;
     }
 
-    public int Quiescence (Board board, MoveGenerator moveGenerator, Evaluation evaluation, int alpha, int beta, int ply)
+    public int Quiescence (Board board, MoveGenerator moveGenerator, Evaluation evaluation, int alpha, int beta, int ply, int qsDepth = 0)
     {
         // Periodically check if time ran out (every 2048 nodes)
         if (allocatedTimeMs != -1 && ((nodeCount + qNodes) & 2047) == 0)
@@ -585,31 +587,20 @@ public class Search
 
         int bestScore = -500000;
 
+        
+        int standPat = evaluation.EvaluatePosition(board);
 
 
-
-        if(inCheck)
+        if(inCheck && qsDepth < 2)
         {
             moveGenerator.GenerateAllPseudoLegalMoves(board, moveList, ref moveCount);
         }
 
         else
-        {
-            int standPat = evaluation.EvaluatePosition(board);
-            
-            // if(standPat >= beta) return beta;
-            
-
-
-
-
+        {            
             bestScore = standPat;
 
-            if(standPat >= beta) return standPat;
-            
-            
-            
-            
+            if(standPat >= beta) return standPat;            
             
             if(standPat > alpha) alpha = standPat;
 
@@ -648,41 +639,34 @@ public class Search
 
             Move move = moveList[i];
 
-#region debug
+            int capturedPieceType = board.pieceOnSquare[move.TargetSquare];
+            int capturedPieceValue = (capturedPieceType == -1) ? 0 : board.PieceValue[capturedPieceType];
 
+            //======================================================Delta pruning======================================================
 
-// if (board.pieceOnSquare[move.StartSquare] == -1)
-// {
-//     Console.WriteLine("=================================");
-//     Console.WriteLine("FATAL DESYNC CAUGHT BEFORE MAKEMOVE!");
-//     Console.WriteLine($"MoveGen generated a move for square {move.StartSquare}, {move.TargetSquare}, but pieceOnSquare says it is empty.");
-    
-//     if (i > 0) 
-//     {
-//         Console.WriteLine($"The culprit is the PREVIOUS move in this loop: Iteration {i-1}");
-//         // If your Move struct has a way to print the square/value, print moveList[i-1] here to see what it was.
-//     }
-//     else 
-//     {
-//         Console.WriteLine("The corruption happened in a deeper recursive call before this loop started in quiescence");
-//         for (int z = 0; z < 64; z++)
-//         {
-//             Console.Write(board.pieceOnSquare[z] + "\t");
+            int safetyMargin = 200;//assign a safety margin for tactical sacrifices or something. Might have to do more work on evaluation.
 
-//             if ((z + 1) % 8 == 0)
-//             {
-//                 Console.WriteLine();
-//             }
-//         }
-//     }
-    
-//     Console.WriteLine("=================================");
-//     Console.Out.Flush();
-//     Environment.Exit(1);
-// }
-#endregion debug
+            if ((standPat + capturedPieceValue + safetyMargin < alpha) && (move.Flag != (int)Move.MoveFlag.promoteToQueen) && (move.Flag != (int)Move.MoveFlag.promoteToRook)) //if the position is hopeless that is, if standpat (current evaluation) + captured piece value + safety margin is still less than alpha, then prune the branch. 
+            {
+                continue; //prune the capture branch
+            }
 
+            //======================================================Delta pruning======================================================
+            
+            
+            //======================================================SEE pruning======================================================
+            
+            if(evaluation.CalculateSEE(board, move) < 0)
+            {
+                continue;
+            }
+            
+            
+            
+            
+            //======================================================SEE pruning======================================================
 
+            
 
 
             board.MakeMove(move);
@@ -698,7 +682,7 @@ public class Search
             }
             legalMovesPlayed++;
 
-            int score = -Quiescence(board, moveGenerator, evaluation, -beta, -alpha, ply + 1);
+            int score = -Quiescence(board, moveGenerator, evaluation, -beta, -alpha, ply + 1, qsDepth + 1);
 
             board.UnmakeMove(move);
 
@@ -886,8 +870,119 @@ public class Search
     // }
 
 
+    public static ulong totalSearchNodeCount;
+    public static ulong totalQuiescenceNodeCount;
+    public static ulong totalNodeCount;
+
+
+    // public Move GetBestMove(Board board, MoveGenerator moveGenerator, Evaluation evaluation, int depth, int timeLimitMs = -1)
+    // {
+    //     nodeCount = 0;
+    //     leafCount = 0;
+    //     qNodes = 0;
+    //     ttProbes = 0;
+    //     ttHits = 0;
+    //     ttCutoffs = 0;
+    //     ttMoveFirst = 0;
+    //     ttMoveBest = 0;
+    //     killerMovesHit = 0;
+    //     killerMovesProbed = 0;
+    //     historyHit = 0;
+    //     historyProbed = 0;
+    //     Array.Clear(killerMoves, 0, killerMoves.Length);
+
+    //     abortSearch = false;
+    //     allocatedTimeMs = timeLimitMs;
+
+
+
+    //     int infinity = 500000; 
+    //     Move bestMove = new Move(0);
+        
+    //     sw = System.Diagnostics.Stopwatch.StartNew();
+
+    //     // Iterative Deepening Loop
+    //     for (int currentDepth = 1; currentDepth <= depth; currentDepth++)
+    //     {
+    //         int alpha = -infinity;
+    //         int beta = infinity;
+            
+    //         // Search the current depth. The TT will pass move ordering from the previous depth!
+    //         int score = NegaMax(board, moveGenerator, evaluation, currentDepth, alpha, beta, 0);
+    //         //if(abortSearch) break;
+            
+    //         // Grab the best move found at this depth
+    //         bestMove = pvTable[0, 0];
+
+    //         string pvString = "";
+    //         for (int i = 0; i < pvLength[0]; i++)
+    //         {
+    //             pvString += BoardUtility.MoveToUci(pvTable[0, i]) + " ";
+    //         }
+
+    //         long totalNodes = nodeCount + qNodes;
+    //         long timeMs = Math.Max(1, sw.ElapsedMilliseconds); // Use Math.Max to avoid division by zero
+    //         long nps = (totalNodes * 1000) / timeMs;
+
+    //         double hitRate = ttProbes > 0 ? (100.0 * ttHits / ttProbes) : 0;
+    //         double killerHitRate = killerMovesProbed > 0 ? (100.0 * killerMovesHit / killerMovesProbed) : 0;
+    //         double gameKillerHitRate = gameKillerMovesProbed > 0 ? (100.0 * gameKillerMovesHit / gameKillerMovesProbed) : 0;
+    //         double historyHitRate = historyProbed > 0 ? (100.0 * historyHit / historyProbed) : 0;
+
+    //         //Print info to the UCI GUI 
+    //         // Console.WriteLine($"info string TT Probes: {ttProbes} | TT Hits: {ttHits} | TT Cutoffs: {ttCutoffs} | Hit Rate: {hitRate:F2}%");
+    //         // Console.WriteLine($"info string Killer Probes: {killerMovesProbed} | Killer Hits: {killerMovesHit} | Killer Hit Rate: {killerHitRate:F2}%");
+    //         Console.WriteLine($"Search Nodes :{nodeCount}, Quiescence Nodes :{qNodes}");
+    //         Console.WriteLine($"info depth {currentDepth} score cp {score} time {timeMs} nodes {totalNodes} nps {nps} pv {pvString.TrimEnd()}");
+
+            
+
+    //         //time logic
+    //         //if time ran out, log this depth and break out of the loop. Do not update the bestMove and return the bestMove found at previous depth.
+    //         if(abortSearch)
+    //         {
+    //             // totalNodeCount += (ulong)totalNodes;
+    //             // totalQuiescenceNodeCount += (ulong)qNodes;
+    //             // totalSearchNodeCount += (ulong)nodeCount;
+    //             break;
+    //         }
+            
+
+    //         //==============================Logging code===================================
+    //         //DISABLE IT IN BENCHMARK RUNS
+            
+    //         if (currentDepth == depth)
+    //         {
+    //             string engineFolder = AppDomain.CurrentDomain.BaseDirectory;
+                
+    //             // 1. Get the unique Operating System Process ID for this running instance
+    //             int pid = System.Diagnostics.Process.GetCurrentProcess().Id;
+                
+    //             // 2. Embed the PID directly into the filename so instances never collide
+    //             string filePath = Path.Combine(engineFolder, $"node_counts_depth8_pid_{pid}.csv");
+
+    //             // 3. Standard write check
+    //             if (!System.IO.File.Exists(filePath))
+    //             {
+    //                 System.IO.File.WriteAllText(filePath, "Depth,Nodes,TimeMs,HistoryHitRate\n");
+    //             }
+
+    //             System.IO.File.AppendAllText(filePath, $"{currentDepth},{totalNodes},{timeMs},{historyHitRate:F2}\n");
+    //         }
+
+    //         // DISABLE IT IN BENCHMARK RUNS
+    //         //==============================Logging code===================================
+            
+
+
+    //     }
+
+    //     return bestMove;
+    // }
+
     public Move GetBestMove(Board board, MoveGenerator moveGenerator, Evaluation evaluation, int depth, int timeLimitMs = -1)
     {
+        // Reset global counters for the new move
         nodeCount = 0;
         leafCount = 0;
         qNodes = 0;
@@ -901,17 +996,26 @@ public class Search
         historyHit = 0;
         historyProbed = 0;
         Array.Clear(killerMoves, 0, killerMoves.Length);
-        Array.Clear(historyMoves, 0, historyMoves.Length);
-
+        // Array.Clear(historyMoves, 0, historyMoves.Length);//delete this fucking shit. OMG I hate this fucking shit. Why can't I find which piece of shit line is exploding the node count. Why am I re-adding trash code just to log this fucking shit. OMG I HATE IT
         abortSearch = false;
         allocatedTimeMs = timeLimitMs;
-
-
 
         int infinity = 500000; 
         Move bestMove = new Move(0);
         
         sw = System.Diagnostics.Stopwatch.StartNew();
+
+        // --- SNAPSHOT VARIABLES ---
+        // These hold the clean data of the last fully completed depth
+        int completedDepth = 0;
+        long savedNodeCount = 0;
+        long savedQNodes = 0;
+        long savedTimeMs = 0;
+        long savedTtProbes = 0;
+        long savedTtHits = 0;
+        long savedTtCutoffs = 0;
+        long savedTtMoveFirst = 0;
+        long savedTtMoveBest = 0;
 
         // Iterative Deepening Loop
         for (int currentDepth = 1; currentDepth <= depth; currentDepth++)
@@ -919,16 +1023,28 @@ public class Search
             int alpha = -infinity;
             int beta = infinity;
             
-            // Search the current depth. The TT will pass move ordering from the previous depth!
             int score = NegaMax(board, moveGenerator, evaluation, currentDepth, alpha, beta, 0);
             
-            //time logic
-            //if time ran out, break out of the loop. Do not update the bestMove and return the bestMove found at previous depth.
-            if(abortSearch) break;
+            // If we ran out of time, break IMMEDIATELY.
+            // Do not update the snapshot variables. They will retain the stats from the previous depth.
+            if(abortSearch)
+            {
+                break;
+            }
 
+            // --- UPDATE SNAPSHOT ---
+            // If we reach here, the depth finished successfully. 
+            // Save the exact state of the counters.
+            completedDepth = currentDepth;
+            savedNodeCount = nodeCount;
+            savedQNodes = qNodes;
+            savedTimeMs = Math.Max(1, sw.ElapsedMilliseconds);
+            savedTtProbes = ttProbes;
+            savedTtHits = ttHits;
+            savedTtCutoffs = ttCutoffs;
+            savedTtMoveFirst = ttMoveFirst;
+            savedTtMoveBest = ttMoveBest;
 
-
-            // Grab the best move found at this depth
             bestMove = pvTable[0, 0];
 
             string pvString = "";
@@ -937,54 +1053,39 @@ public class Search
                 pvString += BoardUtility.MoveToUci(pvTable[0, i]) + " ";
             }
 
-            long totalNodes = nodeCount + qNodes;
-            long timeMs = Math.Max(1, sw.ElapsedMilliseconds); // Use Math.Max to avoid division by zero
-            long nps = (totalNodes * 1000) / timeMs;
+            long currentTotalNodes = nodeCount + qNodes;
+            long currentTimeMs = Math.Max(1, sw.ElapsedMilliseconds); 
+            long nps = (currentTotalNodes * 1000) / currentTimeMs;
 
-            double hitRate = ttProbes > 0 ? (100.0 * ttHits / ttProbes) : 0;
-            double killerHitRate = killerMovesProbed > 0 ? (100.0 * killerMovesHit / killerMovesProbed) : 0;
-            double gameKillerHitRate = gameKillerMovesProbed > 0 ? (100.0 * gameKillerMovesHit / gameKillerMovesProbed) : 0;
-            double historyHitRate = historyProbed > 0 ? (100.0 * historyHit / historyProbed) : 0;
-
-            //Print info to the UCI GUI 
-            // Console.WriteLine($"info string TT Probes: {ttProbes} | TT Hits: {ttHits} | TT Cutoffs: {ttCutoffs} | Hit Rate: {hitRate:F2}%");
-            // Console.WriteLine($"info string Killer Probes: {killerMovesProbed} | Killer Hits: {killerMovesHit} | Killer Hit Rate: {killerHitRate:F2}%");
-            Console.WriteLine($"info depth {currentDepth} score cp {score} time {timeMs} nodes {totalNodes} nps {nps} pv {pvString.TrimEnd()}");
-
-
-            //==============================Logging code===================================
-            //DISABLE IT IN BENCHMARK RUNS
-            
-            // if (currentDepth == 8)
-            // {
-            //     string engineFolder = AppDomain.CurrentDomain.BaseDirectory;
-                
-            //     // 1. Get the unique Operating System Process ID for this running instance
-            //     int pid = System.Diagnostics.Process.GetCurrentProcess().Id;
-                
-            //     // 2. Embed the PID directly into the filename so instances never collide
-            //     string filePath = Path.Combine(engineFolder, $"node_counts_depth8_pid_{pid}.csv");
-
-            //     // 3. Standard write check
-            //     if (!System.IO.File.Exists(filePath))
-            //     {
-            //         System.IO.File.WriteAllText(filePath, "Depth,Nodes,TimeMs,HistoryHitRate\n");
-            //     }
-
-            //     System.IO.File.AppendAllText(filePath, $"8,{totalNodes},{timeMs},{historyHitRate:F2}\n");
-            // }
-
-            // DISABLE IT IN BENCHMARK RUNS
-            //==============================Logging code===================================
-            
-
-
+            Console.WriteLine($"Search Nodes: {nodeCount}, Quiescence Nodes: {qNodes}");
+            Console.WriteLine($"Best move = {BoardUtility.MoveToUci(bestMove)}");
+            Console.WriteLine($"info depth {currentDepth} score cp {score} time {currentTimeMs} nodes {currentTotalNodes} nps {nps} pv {pvString.TrimEnd()}");
         }
+
+        // ====================================================================
+        // LOGGING BLOCK
+        // ====================================================================
+        
+        // long finalTotalNodes = savedNodeCount + savedQNodes;
+        
+        // string engineFolder = AppDomain.CurrentDomain.BaseDirectory;
+        // int pid = System.Diagnostics.Process.GetCurrentProcess().Id;
+        // string filePath = Path.Combine(engineFolder, $"move_stats_pid_{pid}.csv");
+
+        // if (!System.IO.File.Exists(filePath))
+        // {
+        //     string header = "Depth,SearchNodes,QNodes,TotalNodes,TimeMs,TTProbes,TTHits,TTCutoffs,TTMoveFirst,TTMoveBest\n";
+        //     System.IO.File.WriteAllText(filePath, header);
+        // }
+
+        // string logLine = $"{completedDepth},{savedNodeCount},{savedQNodes},{finalTotalNodes},{savedTimeMs},{savedTtProbes},{savedTtHits},{savedTtCutoffs},{savedTtMoveFirst},{savedTtMoveBest}\n";
+        
+        // System.IO.File.AppendAllText(filePath, logLine);
+
+        //LOGGING END=======================
 
         return bestMove;
     }
-
-    
     void AgeHistoryTable()
     {
         int numPieces = historyMoves.GetLength(0);

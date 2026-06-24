@@ -17,7 +17,7 @@ class Program
         Search search = new Search();
         Evaluation evaluation = new Evaluation();
 
-        UCIUtility.Loop(board, moveGenerator, evaluation, search);
+        // UCIUtility.Loop(board, moveGenerator, evaluation, search);
 
         // string fen1 = "8/5pk1/1R2p3/4P1pp/8/4K3/8/5r2 w - - 8 61";
         // string errorFen2 = "Q1Q3Q1/8/8/2P5/8/1K1k3P/8/8 b - - 14 82";
@@ -29,10 +29,85 @@ class Program
         // perft2 - middlegame (perft)
         // fen13 - endgame (mine)
 
-        // string fen1 = TestPositions.perft6;
+        string fen = TestPositions.perft2;
+        FenUtility.LoadFromFen(fen, board);
+        // for(int d = 1; d <=4; d++)
+        // {
+            int eval = search.StartSearch(board, moveGenerator, evaluation, 9, -50000, 50000, 0);
+        //     Console.WriteLine($"Depth{d}");
+            Console.WriteLine($"Evaluation :{eval} \nSearch nodes :{search.nodeCount} \nQuiescence nodes :{search.qNodes} \nTotal nodes :{search.nodeCount + search.qNodes}");
+            search.PrintPrincipalVariation();
+        //     Console.WriteLine();
+
+        // }
+        /*
+        Kiwipete depth 9
+        Before
+        Search nodes :18903964 
+        Quiescence nodes :38405876 
+        Total nodes :57309840
+        
+        After
+        Search nodes :18042342 
+        Quiescence nodes :18989422 
+        Total nodes :37031764
+        
+
+
+        Middlegame2
+        Before
+        Search nodes :3273898 
+        Quiescence nodes :11473659 
+        Total nodes :14747557
+
+        After
+        Search nodes :3153003 
+        Quiescence nodes :3329547 
+        Total nodes :6482550
+
+
+        Endgame
+        Before
+        Search nodes :12317276 
+        Quiescence nodes :14766238 
+        Total nodes :27083514
+
+        After
+        Search nodes :11416540 
+        Quiescence nodes :10863072 
+        Total nodes :22279612
+
+
+
+        Middlegame
+        Before
+        Search nodes :24718016 
+        Quiescence nodes :41723918 
+        Total nodes :66441934
+
+        After
+        Search nodes :24541776 
+        Quiescence nodes :24577528 
+        Total nodes :49119304
+
+
+        Starting 
+        Before
+        Search nodes :7581483 
+        Quiescence nodes :9021775 
+        Total nodes :16603258
+
+        After
+        Search nodes :7495214 
+        Quiescence nodes :6978267 
+        Total nodes :14473481
+        */
+
+
+        // string fen1 = TestPositions.perft2;
         // FenUtility.LoadFromFen(fen1, board);
         // // 
-        // int searchDepth = 5;
+        // int searchDepth = 8;
         // int infinity = 500000;
         // //
         // Stopwatch stopwatch = new Stopwatch();
@@ -42,17 +117,17 @@ class Program
         // {
         //     search.ClearHistory();
         //     TT.Clear();
-        //     int eval = search.StartSearch(board, moveGenerator, evaluation, searchDepth, -infinity, infinity, 0);
+            // search.StartSearch(board, moveGenerator, evaluation, searchDepth, -infinity, infinity, 0);
         // }
-        // long nodes = PerftTool.Perft(board, moveGenerator, searchDepth);
+        // // long nodes = PerftTool.Perft(board, moveGenerator, searchDepth);
         // stopwatch.Stop();
         // double time = stopwatch.Elapsed.TotalMilliseconds;
-        // double time_sec = time/1000;
-        // Console.WriteLine($"Perft test : Nodes: {nodes :N0} \nTime: {time :N0}ms \nNPS: {nodes/time_sec :N0}");
+        // // double time_sec = time/1000;
+        // // Console.WriteLine($"Perft test : Nodes: {nodes :N0} \nTime: {time :N0}ms \nNPS: {nodes/time_sec :N0}");
         // Console.WriteLine($"NodeCount = {(search.nodeCount + search.qNodes) :N0}\nAverage time = {stopwatch.Elapsed.TotalMilliseconds / loopCount:N0}ms\nNPS = {(search.nodeCount+search.qNodes) / (stopwatch.Elapsed.TotalSeconds / loopCount):N0}");
         // // // Program.cs (C# Top-Level Statements)
         // //NodeCount = 17,916,356
-        // Console.WriteLine($"Evaluation {eval}");
+        // // Console.WriteLine($"Evaluation {eval}");
         // search.PrintPrincipalVariation();
 
         
@@ -196,6 +271,26 @@ class Program
         // "go depth 6",  
         // "position startpos moves b1c3 d7d5 e2e3 e7e5 d2d4 e5e4 f1b5 c7c6 b5e2 d8g5 e1f1 g5d8 f2f3 g8f6 f3e4 d5e4 c1d2 f8d6 g1h3 c8h3 g2h3 e8g8 f1g1 c6c5 d4c5 d6c5 b2b4 c5b4 c3e4 f6e4 d2b4 d8g5 g1f1 f8d8 d1e1 g5f5 f1g2 f5g5 g2f3 g5f5 f3g2 f5g5 g2f3 b8c6 a1d1 g5f5 f3g2 f5g5 g2f3 a7a5 b4a3 g5f6 f3e4 d8e8 e4d3 a8d8 d3c4 b7b5 c4b5 f6f5 b5c6 f5e4 c6c7 d8c8 c7b6 c8b8 b6a5 e4a8 e2a6 e8e5 d1d5 e5d5 a3c5 d5c5 a5a4 a8a6 e1a5 c5a5",
         // "go depth 6",  
+        // };
+
+        // string[] crashTest =
+        // {
+        //     "position startpos moves e2e3",
+        //     "go wtime 0 btime 121599 binc 1000",
+        //     "position startpos moves e2e3 d7d5 d2d4",
+        //     "go wtime -12679 btime 119663 binc 1000",
+        //     "position startpos moves e2e3 d7d5 d2d4 g8f6 f1d3",
+        //     "go wtime -19194 btime 117770 binc 1000",
+        //     "position startpos moves e2e3 d7d5 d2d4 g8f6 f1d3 b8c6 b1c3",
+        //     "go wtime -26973 btime 115915 binc 1000",
+        //     "position startpos moves e2e3 d7d5 d2d4 g8f6 f1d3 b8c6 b1c3 c8g4 f2f3",
+        //     "go wtime -30935 btime 114097 binc 1000",
+        //     "position startpos moves e2e3 d7d5 d2d4 g8f6 f1d3 b8c6 b1c3 c8g4 f2f3 g4d7 g1e2",
+        //     "go wtime -35418 btime 112316 binc 1000",
+        //     "position startpos moves e2e3 d7d5 d2d4 g8f6 f1d3 b8c6 b1c3 c8g4 f2f3 g4d7 g1e2 e7e5 d4e5",
+        //     "go wtime -51106 btime 110570 binc 1000",
+        //     "position startpos moves e2e3 d7d5 d2d4 g8f6 f1d3 b8c6 b1c3 c8g4 f2f3 g4d7 g1e2 e7e5 d4e5 c6e5 c1d2",
+        //     "go wtime -59913 btime 108859 binc 1000",
         // };
 
 

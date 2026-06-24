@@ -52,7 +52,7 @@ public class FenUtility
         // 2. WIPE ALL BITBOARDS TO ZERO
         Array.Clear(board.pieceBitboards, 0, board.pieceBitboards.Length);
         Array.Clear(board.colorBitboard, 0, board.colorBitboard.Length);
-        board.AllPieces = 0UL;
+        board.occupiedMask = 0UL;
         
         // 3. Reset turn and game state variables (Ensure you parse these from FEN later!)
         board.colorToMove = 0; 
@@ -195,7 +195,7 @@ public class FenUtility
         //we do it outside of the foreach loop in fenParts[0] for efficiency.
         board.colorBitboard[(int)PieceTeam.WhitePieces] = board.pieceBitboards[(int)Piece.WhitePawns] | board.pieceBitboards[(int)Piece.WhiteKnights] | board.pieceBitboards[(int)Piece.WhiteBishops] | board.pieceBitboards[(int)Piece.WhiteRooks] | board.pieceBitboards[(int)Piece.WhiteQueens] | board.pieceBitboards[(int)Piece.WhiteKing];
         board.colorBitboard[(int)PieceTeam.BlackPieces] = board.pieceBitboards[(int)Piece.BlackPawns] | board.pieceBitboards[(int)Piece.BlackKnights] | board.pieceBitboards[(int)Piece.BlackBishops] | board.pieceBitboards[(int)Piece.BlackRooks] | board.pieceBitboards[(int)Piece.BlackQueens] | board.pieceBitboards[(int)Piece.BlackKing];
-        board.AllPieces = board.colorBitboard[(int)PieceTeam.WhitePieces] | board.colorBitboard[(int)PieceTeam.BlackPieces];
+        board.occupiedMask = board.colorBitboard[(int)PieceTeam.WhitePieces] | board.colorBitboard[(int)PieceTeam.BlackPieces];
 
         board.currentHash = Zobrist.GenerateHash(board);
 

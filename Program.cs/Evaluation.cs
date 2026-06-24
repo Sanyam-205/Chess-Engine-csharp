@@ -1,4 +1,6 @@
 using System;
+using System.Drawing;
+using System.IO.Pipelines;
 using System.Net;
 using System.Numerics;
 using static Board;
@@ -100,7 +102,7 @@ public class Evaluation
         {
             int squareIndex = BitOperations.TrailingZeroCount(whiteBishops);
 
-            ulong rawAttacks = AttackTables.GetBishopAttacks(squareIndex, board.AllPieces);
+            ulong rawAttacks = AttackTables.GetBishopAttacks(squareIndex, board.occupiedMask);
             //we or the white piece bitboard with black king because a bishop can't actually step onto the enemy king's square so it might skew the mobility bonus.
             ulong bishopAttacks = rawAttacks & ~(board.colorBitboard[(int)PieceTeam.WhitePieces] | board.pieceBitboards[(int)Piece.BlackKing]); 
 
@@ -118,7 +120,7 @@ public class Evaluation
         {
             int squareIndex = BitOperations.TrailingZeroCount(blackBishops);
 
-            ulong rawAttacks = AttackTables.GetBishopAttacks(squareIndex, board.AllPieces);
+            ulong rawAttacks = AttackTables.GetBishopAttacks(squareIndex, board.occupiedMask);
             //we or the white piece bitboard with black king because a bishop can't actually step onto the enemy king's square so it might skew the mobility bonus.
             ulong bishopAttacks = rawAttacks & ~(board.colorBitboard[(int)PieceTeam.BlackPieces] | board.pieceBitboards[(int)Piece.WhiteKing]); 
 
@@ -140,7 +142,7 @@ public class Evaluation
         {
             int squareIndex = BitOperations.TrailingZeroCount(whiteRooks);
 
-            ulong rawAttacks = AttackTables.GetRookAttacks(squareIndex, board.AllPieces);
+            ulong rawAttacks = AttackTables.GetRookAttacks(squareIndex, board.occupiedMask);
             ulong rookAttacks = rawAttacks & ~(board.colorBitboard[(int)PieceTeam.WhitePieces] | board.pieceBitboards[(int) Piece.BlackKing]);
 
             int attackSquares = BitOperations.PopCount(rookAttacks);
@@ -156,7 +158,7 @@ public class Evaluation
         {
             int squareIndex = BitOperations.TrailingZeroCount(blackRooks);
 
-            ulong rawAttacks = AttackTables.GetRookAttacks(squareIndex, board.AllPieces);
+            ulong rawAttacks = AttackTables.GetRookAttacks(squareIndex, board.occupiedMask);
             ulong rookAttacks = rawAttacks & ~(board.colorBitboard[(int)PieceTeam.BlackPieces] | board.pieceBitboards[(int) Piece.WhiteKing]);
 
             int attackSquares = BitOperations.PopCount(rookAttacks);
@@ -175,7 +177,7 @@ public class Evaluation
         {
             int squareIndex = BitOperations.TrailingZeroCount(whiteQueens);
 
-            ulong rawAttacks = AttackTables.GetQueenAttacks(squareIndex, board.AllPieces);
+            ulong rawAttacks = AttackTables.GetQueenAttacks(squareIndex, board.occupiedMask);
             ulong queenAttacks = rawAttacks & ~(board.colorBitboard[(int) PieceTeam.WhitePieces] | board.pieceBitboards[(int) Piece.BlackKing]);
 
             int attackSquares = BitOperations.PopCount(queenAttacks);
@@ -192,7 +194,7 @@ public class Evaluation
         {
             int squareIndex = BitOperations.TrailingZeroCount(blackQueens);
 
-            ulong rawAttacks = AttackTables.GetQueenAttacks(squareIndex, board.AllPieces);
+            ulong rawAttacks = AttackTables.GetQueenAttacks(squareIndex, board.occupiedMask);
             ulong queenAttacks = rawAttacks & ~(board.colorBitboard[(int) PieceTeam.BlackPieces] | board.pieceBitboards[(int) Piece.WhiteKing]);
 
             int attackSquares = BitOperations.PopCount(queenAttacks);
@@ -378,112 +380,6 @@ public class Evaluation
 
         return score;
     }
-
-    // static int ExposedKing(Board board, ulong kingBit, ulong pawnBit)
-    // {
-    //     int penalty;
-
-    //     ulong pawnShield = board.pieceBitboards[(int)Piece.WhitePawns + (board.colorToMove * 6)];
-    //     ulong king = board.pieceBitboards[(int)Piece.WhiteKing + (board.colorToMove * 6)];
-
-    //     int kingSquare = BitOperations.TrailingZeroCount(king); //gives the exact king square
-
-    //     if(board.colorToMove == 0)
-    //     {
-    //         if(kingSquare <= 2)
-    //         {
-    //             ulong APawn = pawnShield & fileMask[0];
-    //             ulong BPawn = pawnShield & fileMask[1];
-    //             ulong CPawn = pawnShield & fileMask[2];
-
-    //             int APawnSquare = BitOperations.TrailingZeroCount(APawn);
-    //             int BPawnSquare = BitOperations.TrailingZeroCount(BPawn);
-    //             int CPawnSquare = BitOperations.TrailingZeroCount(CPawn);
-
-    //             int APawnPenalty = whiteExposedKingPenalty[APawnSquare];
-    //             int BPawnPenalty = whiteExposedKingPenalty[BPawnSquare];
-    //             int CPawnPenalty = whiteExposedKingPenalty[CPawnSquare];
-
-    //             if(APawnSquare == 64) APawnPenalty = -25;
-    //             if(BPawnSquare == 64) BPawnPenalty = -60;
-    //             if(CPawnSquare == 64) CPawnPenalty = -35;
-
-    //             penalty = APawnPenalty + BPawnPenalty + CPawnPenalty;
-    //             return penalty;
-
-    //         }
-    //         if(kingSquare >= 5 && kingSquare <=7)
-    //         {
-    //             ulong FPawn = pawnShield & fileMask[5];
-    //             ulong GPawn = pawnShield & fileMask[6];
-    //             ulong HPawn = pawnShield & fileMask[7];
-
-    //             int FPawnSquare = BitOperations.TrailingZeroCount(FPawn);
-    //             int GPawnSquare = BitOperations.TrailingZeroCount(GPawn);
-    //             int HPawnSquare = BitOperations.TrailingZeroCount(HPawn);
-
-    //             int FPawnPenalty = whiteExposedKingPenalty[FPawnSquare];
-    //             int GPawnPenalty = whiteExposedKingPenalty[GPawnSquare];
-    //             int HPawnPenalty = whiteExposedKingPenalty[HPawnSquare];
-
-    //             if(FPawnSquare == 64) FPawnPenalty = -25;
-    //             if(GPawnSquare == 64) GPawnPenalty = -60;
-    //             if(HPawnSquare == 64) HPawnPenalty = -35;
-
-    //             penalty = FPawnPenalty + GPawnPenalty + HPawnPenalty;
-    //             return penalty;
-    //         }
-    //     }
-    //     else if(board.colorToMove == 1)
-    //     {
-    //         if(kingSquare >=56 && kingSquare <=58)
-    //         {
-    //             ulong APawn = pawnShield & fileMask[0];
-    //             ulong BPawn = pawnShield & fileMask[1];
-    //             ulong CPawn = pawnShield & fileMask[2];
-
-    //             int APawnSquare = BitOperations.TrailingZeroCount(APawn);
-    //             int BPawnSquare = BitOperations.TrailingZeroCount(BPawn);
-    //             int CPawnSquare = BitOperations.TrailingZeroCount(CPawn);
-
-    //             int APawnPenalty = blackExposedKingPenalty[APawnSquare];
-    //             int BPawnPenalty = blackExposedKingPenalty[BPawnSquare];
-    //             int CPawnPenalty = blackExposedKingPenalty[CPawnSquare];
-
-    //             if(APawnSquare == 64) APawnPenalty = -25;
-    //             if(BPawnSquare == 64) BPawnPenalty = -60;
-    //             if(CPawnSquare == 64) CPawnPenalty = -35;
-
-    //             penalty = APawnPenalty + BPawnPenalty + CPawnPenalty;
-    //             return penalty;
-    //         }
-    //         if(kingSquare >= 61 && kingSquare <=63)
-    //         {
-    //             ulong FPawn = pawnShield & fileMask[5];
-    //             ulong GPawn = pawnShield & fileMask[6];
-    //             ulong HPawn = pawnShield & fileMask[7];
-
-    //             int FPawnSquare = BitOperations.TrailingZeroCount(FPawn);
-    //             int GPawnSquare = BitOperations.TrailingZeroCount(GPawn);
-    //             int HPawnSquare = BitOperations.TrailingZeroCount(HPawn);
-
-    //             int FPawnPenalty = whiteExposedKingPenalty[FPawnSquare];
-    //             int GPawnPenalty = whiteExposedKingPenalty[GPawnSquare];
-    //             int HPawnPenalty = whiteExposedKingPenalty[HPawnSquare];
-
-    //             if(FPawnSquare == 64) FPawnPenalty = -25;
-    //             if(GPawnSquare == 64) GPawnPenalty = -60;
-    //             if(HPawnSquare == 64) HPawnPenalty = -35;
-
-    //             penalty = FPawnPenalty + GPawnPenalty + HPawnPenalty;
-    //             return penalty;
-    //         }
-    //     }
-
-    //     return 0;    
-    
-    // }
-
 
     static int ExposedKing(Board board)
     {
@@ -977,6 +873,103 @@ public class Evaluation
         
         // H-file (7): Only check G-file
         isolatedPawnMask[7] = fileMask[6];
+    }
+
+
+    //======================================================Static Exchange Evaluation======================================================
+
+    // Static Exchange Evaluation is an algorithm that is used to calculate what the outcome of an exchange will be. In all fairness, this can be done using makemove and recursice calls but that is too slow. So we use a iterative approach.
+    // In iterative approach, we have an array 'gains[]' that store the pure material eval after each exchange. Based on moving piece and captured piece, the array gains[] stores the score and if after all sequences of captures and recaptures are done, and the score is bad, then that capture is also bad so we never go in the full quiescence loop of searching through all captures.
+
+
+    public int CalculateSEE(Board board, Move move)
+    {
+        int startSquare = move.StartSquare;
+        int targetSquare = move.TargetSquare;
+
+        int movingPiece = board.pieceOnSquare[startSquare];
+        int capturedPiece = board.pieceOnSquare[targetSquare];
+
+        if(capturedPiece == -1) return 0; //if quiet move then no use for SEE, return 0.
+
+        //we set the max value for gain to 32 so it will store 32 plys of captures at one square at most.
+        int[] gain = new int[32];
+        int d = 0; //counter for the gain array
+
+        gain[d] = board.PieceValue[capturedPiece]; //the first gain is the value of the piece we are initially capturing.
+
+        // simulate the piece moving internally for the SEE
+        int currentAttackerValue = board.PieceValue[movingPiece]; //store the value of moving piece
+        int colorToMove = board.colorToMove ^ 1; //we don't change the actual board state but store the changed turn in another int.
+
+        ulong occupiedPiecesMask = board.occupiedMask;
+        occupiedPiecesMask &= ~(1UL << startSquare); //we remove the piece from the startsquare in the temporary occupancy bitboard. Since this code block will only trigger for captures, the captured square will stil store the 1, so no need to update it.
+
+        while(true)
+        {
+            d++;
+
+            if(d >= 32) break;
+
+            int nextAttackerSquare = GetLeastValuableAttacker(board, targetSquare, colorToMove, occupiedPiecesMask);
+            if(nextAttackerSquare == -1) break; //no more pieces attacking the square
+
+            int nextAttackerPiecce = board.pieceOnSquare[nextAttackerSquare];
+
+            // gain for d index is current attacker value minus the gain for previous iteration
+            gain[d] = currentAttackerValue - gain[d-1];
+
+            // If the King is captured, we instantly break.
+            if (Math.Max(gain[d], gain[d - 1]) >= 10000) break;
+
+            //for next iteration, current attacker value becomes next attacker piece's value
+            currentAttackerValue = board.PieceValue[nextAttackerPiecce];
+            colorToMove ^= 1;
+
+            //remove the attacker piece from the temporary board
+            occupiedPiecesMask &= ~(1UL << nextAttackerSquare);
+        
+        }
+
+        while (--d > 0)
+        {
+            gain[d - 1] = -Math.Max(-gain[d - 1], gain[d]);
+        }
+
+        return gain[0];
+    }
+
+    public int GetLeastValuableAttacker(Board board, int targetSquare, int colorToMove, ulong occupiedMask)
+    {
+
+        ulong pawnAttack = (colorToMove == 0) ? AttackTables.blackPawnAttacks[targetSquare] : AttackTables.whitePawnAttacks[targetSquare];
+        ulong pawns = pawnAttack & board.pieceBitboards[(int)Piece.WhitePawns + (colorToMove * 6)] & occupiedMask;
+        if(pawns != 0) return BitOperations.TrailingZeroCount(pawns);
+
+
+        ulong knightAttack = AttackTables.knightAttacks[targetSquare];
+        ulong knights = knightAttack & board.pieceBitboards[(int)Piece.WhiteKnights + (colorToMove * 6)] & occupiedMask;
+        if(knights != 0) return BitOperations.TrailingZeroCount(knights);
+
+        ulong rawBishopAttacks = AttackTables.GetBishopAttacks(targetSquare, occupiedMask);
+        ulong bishops = rawBishopAttacks & board.pieceBitboards[(int)Piece.WhiteBishops + (colorToMove * 6)] & occupiedMask;
+        if(bishops != 0) return BitOperations.TrailingZeroCount(bishops);
+
+        ulong rawRookAttacks = AttackTables.GetRookAttacks(targetSquare, occupiedMask);
+        ulong rooks = rawRookAttacks & board.pieceBitboards[(int)Piece.WhiteRooks + (colorToMove * 6)] & occupiedMask;
+        if(rooks != 0) return BitOperations.TrailingZeroCount(rooks);
+
+        ulong rawQueenAttacks = AttackTables.GetQueenAttacks(targetSquare, occupiedMask);
+        ulong queens = rawQueenAttacks & board.pieceBitboards[(int)Piece.WhiteQueens + (colorToMove * 6)] & occupiedMask;
+        if(queens != 0) return BitOperations.TrailingZeroCount(queens);
+
+        ulong kingAttacks = AttackTables.kingAttacks[targetSquare];
+        ulong kings = kingAttacks & board.pieceBitboards[(int)Piece.WhiteKing + (colorToMove * 6)] & occupiedMask;
+        if(kings!= 0) return BitOperations.TrailingZeroCount(kings);
+        
+
+
+        return -1;//no attacker
     }
 
 
