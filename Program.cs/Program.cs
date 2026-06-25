@@ -17,7 +17,7 @@ class Program
         Search search = new Search();
         Evaluation evaluation = new Evaluation();
 
-        // UCIUtility.Loop(board, moveGenerator, evaluation, search);
+        UCIUtility.Loop(board, moveGenerator, evaluation, search);
 
         // string fen1 = "8/5pk1/1R2p3/4P1pp/8/4K3/8/5r2 w - - 8 61";
         // string errorFen2 = "Q1Q3Q1/8/8/2P5/8/1K1k3P/8/8 b - - 14 82";
@@ -29,24 +29,55 @@ class Program
         // perft2 - middlegame (perft)
         // fen13 - endgame (mine)
 
-        string fen = TestPositions.perft2;
-        FenUtility.LoadFromFen(fen, board);
-        // for(int d = 1; d <=4; d++)
-        // {
-            int eval = search.StartSearch(board, moveGenerator, evaluation, 9, -50000, 50000, 0);
-        //     Console.WriteLine($"Depth{d}");
-            Console.WriteLine($"Evaluation :{eval} \nSearch nodes :{search.nodeCount} \nQuiescence nodes :{search.qNodes} \nTotal nodes :{search.nodeCount + search.qNodes}");
-            search.PrintPrincipalVariation();
+        // string fen = "r3r1k1/2pp1p1p/p2b2q1/3P1nN1/p2B4/1P6/P1PQ1PPP/R3R1K1 w - - 1 5";
+        // string fen = "2r1r1k1/pp1Qbp1p/1q4p1/n2p4/3P1B2/3B3P/PP3PP1/3RR1K1 b - - 0 21";
+        // string fen = TestPositions.fen1;
+        // FenUtility.LoadFromFen(fen, board);
+        // // for(int d = 1; d <=4; d++)
+        // // {
+            int eval = search.StartSearch(board, moveGenerator, evaluation, 9);
+        // //     Console.WriteLine($"Depth{d}");
+            // Console.WriteLine($"Evaluation :{eval} \nSearch nodes :{search.nodeCount :N0} \nQuiescence nodes :{search.qNodes :N0} \nTotal nodes :{search.nodeCount + search.qNodes :N0}");
+            // search.PrintPrincipalVariation();
         //     Console.WriteLine();
 
         // }
+
+        /*
+With Check handling, SEE, Delta pruning
+Evaluation :311
+Search nodes :20,215,102
+Quiescence nodes :17,913,801
+Total nodes :38,128,903 
+
+No Check Handling, with SEE and Delta pruning
+Evaluation :290 
+Search nodes :19,994,274 
+Quiescence nodes :17,118,837 
+Total nodes :37,113,111
+
+No Delta pruning, with Check Handling and SEE
+Evaluation :311 
+Search nodes :20,241,668 
+Quiescence nodes :22,681,623 
+Total nodes :42,923,291
+
+No SEE, with Delta pruning and Check Handling
+Evaluation :311 
+Search nodes :20,222,278 
+Quiescence nodes :18,826,739 
+Total nodes :39,049,017
+
+        */
+
+
         /*
         Kiwipete depth 9
         Before
         Search nodes :18903964 
         Quiescence nodes :38405876 
         Total nodes :57309840
-        
+
         After
         Search nodes :18042342 
         Quiescence nodes :18989422 

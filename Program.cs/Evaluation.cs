@@ -6,6 +6,8 @@ using System.Numerics;
 using static Board;
 public class Evaluation
 {
+    public static readonly int[,] ReductionTable = new int[64,64]; // a table to store logarithms for reduction value.
+
 
     static readonly int[] ColorMultiplier = {1, -1};
     static readonly ulong[] fileMask= 
@@ -43,6 +45,7 @@ public class Evaluation
     {
         InitializePassedPawnMasks();
         InitializeIsolatedPawnMasks();
+        InitializeReductionTable();
     }
 
     public int EvaluatePosition(Board board)
@@ -935,8 +938,10 @@ public class Evaluation
         {
             gain[d - 1] = -Math.Max(-gain[d - 1], gain[d]);
         }
+        
 
         return gain[0];
+        
     }
 
     public int GetLeastValuableAttacker(Board board, int targetSquare, int colorToMove, ulong occupiedMask)
@@ -970,6 +975,31 @@ public class Evaluation
 
 
         return -1;//no attacker
+    }
+
+
+
+    static double baseReduction = 0.75;
+    static double divisor = 2.25; 
+
+    static void InitializeReductionTable()
+    {
+        for (int d = 0; d < 64; d++) 
+        {
+            for (int m = 0; m < 64; m++) 
+            {
+                // Avoid math errors with log(0)
+                if (d > 0 && m > 0) 
+                {
+                    ReductionTable[d,m] = (int)(baseReduction + Math.Log(d) * Math.Log(m) / divisor);
+                } 
+                else 
+                {
+                    ReductionTable[d,m] = 0;
+                }
+            }
+        }
+
     }
 
 

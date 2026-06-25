@@ -1,5 +1,6 @@
 using System;
 using System.Data.Common;
+using System.Formats.Asn1;
 using System.Linq.Expressions;
 using System.Net;
 using System.Numerics;
@@ -79,7 +80,7 @@ public class Search
     */
 
     //debug code
-    public int StartSearch(Board board, MoveGenerator moveGenerator, Evaluation evaluation, int depth, int alpha, int beta, int ply)
+    public int StartSearch(Board board, MoveGenerator moveGenerator, Evaluation evaluation, int depth)
     {
         nodeCount = 0; // Clear the board for the new search
         leafCount = 0;
@@ -92,10 +93,20 @@ public class Search
         gameKillerMovesProbed = 0;
         historyHit = 0;
         historyProbed = 0;
-
         Array.Clear(killerMoves, 0, killerMoves.Length);
-        Array.Clear(historyMoves, 0, historyMoves.Length);
-        return NegaMax(board, moveGenerator, evaluation, depth, alpha, beta, ply);
+
+        int score = 0;
+        for (int currentDepth = 1; currentDepth <= depth; currentDepth++)
+        {
+            int alpha = -50000;
+            int beta = 50000;
+            
+            // Search the current depth. The TT will pass move ordering from the previous depth!
+            score = NegaMax(board, moveGenerator, evaluation, currentDepth, alpha, beta, 0);
+            //if(abortSearch) break;
+         }
+
+        return score;
     }
 
     public long ttProbes, ttHits, ttCutoffs;
@@ -104,6 +115,8 @@ public class Search
     public long killerMovesHit, killerMovesProbed;
     public long gameKillerMovesHit, gameKillerMovesProbed;
     public long historyHit, historyProbed;
+    public long LMRAttempts;
+    public long LMRFailHigh;
     
     public bool abortSearch = false;
     public int allocatedTimeMs = -1;
@@ -184,6 +197,52 @@ public class Search
         }
         //TT part end
 
+
+
+
+// // ========================================================================
+// // NULL MOVE PRUNING (NMP)
+// // ========================================================================
+// int R = 2; // Depth reduction factor (2 or 3 is standard)
+
+// // 1. Only allow NMP if we are not at the root (ply > 0)
+// // 2. Only if depth is high enough to be reduced
+// // 3. Do not do NMP if we are in check (evasions are mandatory)
+// bool inCheck = board.IsSquareAttacked(board.GetKingSquare(board.colorToMove), board.colorToMove);
+
+// // 4. Zugzwang Check: NEVER do NMP in Pawn-and-King-only endgames. 
+// // Skipping a turn in Zugzwang will artificially inflate your score and blunder the game.
+// // bool hasNonPawnMaterial = board.HasHeavyPieces(board.colorToMove); 
+
+// if (ply > 0 && depth >= R + 1 && !inCheck && board.HasHeavyPieces(board.colorToMove))
+// {
+//     // Pass the turn to the opponent
+//     Move nullMove = new Move();
+//     board.MakeMove(nullMove);
+    
+//     // Search with a reduced depth and a zero-window around beta
+//     int nullScore = -NegaMax(board, moveGenerator, evaluation, depth - 1 - R, -beta, -beta + 1, ply + 1);
+    
+//     // board.colorToMove ^= 1;
+//     board.UnmakeMove(nullMove);
+
+//     if (abortSearch) return 0;
+
+//     // If skipping our turn STILL beats beta, this position is incredibly strong. Prune it.
+//     if (nullScore >= beta)
+//     {
+//         return nullScore; // Massive depth cutoff here!
+//     }
+// }
+// // ========================================================================
+
+
+
+
+
+
+
+
         Move ttMove = bestMoveThisNode;
         bool hadTTMove = ttMove.Value != 0;
 
@@ -192,11 +251,21 @@ public class Search
             leafCount++;
             // pvLength[ply] = 0; //signifies the search function finished searching
             // return evaluation.EvaluatePosition(board);
+    
+            //check extension
+            // int kingSquare = board.GetKingSquare(board.colorToMove);
+            // bool inCheck = board.IsSquareAttacked(kingSquare, board.colorToMove);
+
+            // if (inCheck)
+            // {
+            //     depth = 1; // Extend by 1 ply and stay in the main search!
+            // }
+
             return Quiescence(board, moveGenerator, evaluation, alpha, beta, ply);
         }
 
         //Populate moveList with pseudolegal moves
-        Move[] moveList = new Move[256];
+        Move[] moveList = new Move[256]; //change it later. DO NOT ALLOCATE NEW ARRAYS IN RECURSIVE FUNCTION
         Move[] quietMoveList = new Move[256];
         int moveCount = 0;
         int quietMoveCount = 0;
@@ -277,6 +346,7 @@ public class Search
             Move move = moveList[i];
 
             bool isQuietMove = board.pieceOnSquare[move.TargetSquare] == -1 && move.Flag != (int)Move.MoveFlag.enPassantCapture;
+            bool isPromotion = move.Flag <= (int)Move.MoveFlag.promoteToQueen && move.Flag >= (int)Move.MoveFlag.promoteToBishop;
             bool isKiller = (move.Value != 0) && (move.Value == killerMoves[ply, 0] || move.Value == killerMoves[ply, 1]);
             bool isHistory = isQuietMove && !isKiller;
 
@@ -289,68 +359,6 @@ public class Search
             {
                 historyProbed++;
             }
-
-
-#region debug
-//
-//     int startSq = move.StartSquare;
-//     int targetSq = move.TargetSquare;
-//     int originalStartPiece = board.pieceOnSquare[startSq];
-//     int originalTargetPiece = board.pieceOnSquare[targetSq];
-
-// if((startSq == 0)  && (targetSq == 0))
-// {
-//     Console.WriteLine("=================================");
-//     Console.WriteLine("BAD MOVE LIST");
-//     Console.WriteLine("=================================");
-
-//     // Console.WriteLine($"Previous move - {moveList[i-1].StartSquare}, {moveList[i-1].TargetSquare}");
-//     Console.WriteLine($"Current move - {moveList[i].StartSquare}, {moveList[i].TargetSquare}");
-//     Console.WriteLine($"Next move - {moveList[i+1].StartSquare}, {moveList[i+1].TargetSquare}");
-
-//     Console.WriteLine("=================================");
-//     Console.Out.Flush();
-//     Environment.Exit(1);
-
-// }
-
-
-
-// if (board.pieceOnSquare[move.StartSquare] == -1)
-// {
-//     Console.WriteLine("=================================");
-//     Console.WriteLine("FATAL DESYNC CAUGHT BEFORE MAKEMOVE!");
-//     Console.WriteLine($"MoveGen generated a move for square {move.StartSquare}, {move.TargetSquare}, but pieceOnSquare says it is empty.");
-    
-//     if (i > 0) 
-//     {
-//         Console.WriteLine($"The culprit is the PREVIOUS move in this loop: Iteration {i-1}");
-//         Console.WriteLine($"Previous move - {moveList[i-1].StartSquare}, {moveList[i-1].TargetSquare}");
-//         // If your Move struct has a way to print the square/value, print moveList[i-1] here to see what it was.
-//     }
-//     else 
-//     {
-//         Console.WriteLine("The corruption happened in a deeper recursive call before this loop started in negamax");
-//         for (int z = 0; z < 64; z++)
-//         {
-//             if(board.pieceOnSquare[z]== 0)
-//             {
-//             Console.Write(board.pieceOnSquare[z] + "\t");
-
-//             if ((z + 1) % 8 == 0)
-//             {
-//                 Console.WriteLine();
-//             }}
-//         }
-//     }
-    
-//     Console.WriteLine("=================================");
-//     Console.Out.Flush();
-//     Environment.Exit(1);
-// }
-
-#endregion
-
 
             board.MakeMove(move);
 
@@ -371,9 +379,69 @@ public class Search
             legalMovesPlayed++;
 
             //Recursive call for lower depth.
-            int score = -NegaMax(board, moveGenerator, evaluation, depth - 1, -beta, -alpha, ply+1);
-            if(abortSearch) return 0;
+            // int score = -NegaMax(board, moveGenerator, evaluation, depth - 1, -beta, -alpha, ply+1);
+            // if(abortSearch) return 0;
         
+
+
+
+            int score;
+            // 1. If it is the very first legal move, search with the full window.
+            if (legalMovesPlayed == 1)
+            {
+                score = -NegaMax(board, moveGenerator, evaluation, depth - 1, -beta, -alpha, ply + 1);
+            }
+            else //zero window search.
+            {
+
+                //=============================================LMR=============================================
+                // 1. LMR Pre-Check
+                int oppKingSquare = BitOperations.TrailingZeroCount(board.pieceBitboards[(int)Piece.WhiteKing + (board.colorToMove * 6)]);
+                bool landsOppInCheck = board.IsSquareAttacked(oppKingSquare, board.colorToMove);
+                bool LMREligible = isQuietMove && !isPromotion && !landsOppInCheck;
+
+                if (depth >= 3 && legalMovesPlayed >= 4 && LMREligible)
+                {
+                    LMRAttempts++;
+
+                    // Try ZWS at a REDUCED depth (e.g., depth - 2)
+                    // (depth - 2) = 1 ply reduction. (depth - 3) = 2 ply reduction. Replaced with the Logarithmic reduction value.
+
+                    int reduction = Evaluation.ReductionTable[depth, legalMovesPlayed];
+                    // int reducedDepth = depth - 1 - reduction;
+                    int reducedDepth = Math.Max(1, depth - 1 - reduction);
+                    score = -NegaMax(board, moveGenerator, evaluation, reducedDepth, -alpha - 1, -alpha, ply + 1);
+
+                    // If the reduced search failed high, we must do a normal depth ZWS
+                    if (score > alpha && score < beta) 
+                    {
+                        LMRFailHigh++;
+                        score = -NegaMax(board, moveGenerator, evaluation, depth - 1, -alpha - 1, -alpha, ply + 1);
+                    }
+                }
+                
+
+                //=============================================LMR=============================================
+
+                else
+                {
+                    // 2. For all other moves, perform a Zero-Window Search (ZWS).
+                    // We expect this to fail low (score <= alpha)
+                    score = -NegaMax(board, moveGenerator, evaluation, depth - 1, -alpha - 1, -alpha, ply + 1);
+                }
+
+                // 3. The Re-Search Condition.
+                // If the ZWS fails high (score > alpha), it means this move is better than our first move.
+                // BUT we only re-search if it hasn't already beaten beta. If it beat beta, it's a hard cutoff anyway.
+                if (score > alpha && score < beta)
+                {
+                    // Re-search with the full window to get the true, exact score.
+                    score = -NegaMax(board, moveGenerator, evaluation, depth - 1, -beta, -alpha, ply + 1);
+                }
+            }
+
+            if (abortSearch) return 0;
+
             board.UnmakeMove(move);
 
             //fail soft
@@ -543,6 +611,197 @@ public class Search
         return bestScore;
     }
 
+    // public int Quiescence (Board board, MoveGenerator moveGenerator, Evaluation evaluation, int alpha, int beta, int ply, int qsDepth = 0)
+    // {
+    //     // Periodically check if time ran out (every 2048 nodes)
+    //     if (allocatedTimeMs != -1 && ((nodeCount + qNodes) & 2047) == 0)
+    //     {
+    //         if (sw != null && sw.ElapsedMilliseconds >= allocatedTimeMs)
+    //         {
+    //             abortSearch = true;
+    //         }
+    //     }
+    //     if (abortSearch) return 0;
+
+    //     qNodes++;
+        
+        
+    //     if (ply >= MaxPly)
+    //     {
+    //         //THE PLY COUNT HAS EXCEEDED MAX SET LIMIT. DO SOMETHING IDK
+    //         return evaluation.EvaluatePosition(board);
+    //     }
+
+    //     pvLength[ply] = 0;
+        
+    //     int currentKingSquare = board.GetKingSquare(board.colorToMove);
+
+    //     // If the King is missing (captured in the previous ply via pseudo-legal generation),
+    //     // immediately evaluate this branch as a loss (checkmate).
+    //     if (currentKingSquare == -1)
+    //     {
+    //         return -100000 + ply;
+    //     }
+
+    //     bool inCheck = board.IsSquareAttacked(currentKingSquare, board.colorToMove);
+
+    //     // Console.WriteLine($"Quiescence called! Side to move: {board.colorToMove}. In Check? {inCheck}");
+
+    //     // if(inCheck) Console.WriteLine("in check");
+    //     Move[] moveList = new Move[256];
+    //     int moveCount = 0;
+
+
+
+    //     int bestScore = -500000;
+
+        
+    //     int standPat = evaluation.EvaluatePosition(board);
+
+
+    //     if(inCheck && qsDepth < 2)
+    //     {
+    //         moveGenerator.GenerateAllPseudoLegalMoves(board, moveList, ref moveCount);
+    //     }
+
+    //     else
+    //     {            
+    //         bestScore = standPat;
+
+    //         if(standPat >= beta) return standPat;            
+            
+    //         if(standPat > alpha) alpha = standPat;
+
+    //         moveGenerator.GenerateAllPseudoLegalCaptures(board, moveList, ref moveCount);
+    //     }
+
+    //     int legalMovesPlayed = 0;
+
+    //     //Move ordering logic
+    //     int[] moveScore = new int[moveCount];
+    //     for(int i = 0; i<moveCount; i++)
+    //     {
+    //         moveScore[i] = ScoreMove(moveList[i], board, ply); //assign scores to moves and store those in moveScore array
+    //     }
+
+
+    //     for(int i = 0; i<moveCount; i++)
+    //     {
+    //         int bestMoveIndex = i;
+
+    //         for(int j = i; j < moveCount; j++)
+    //         {
+    //             if(moveScore[j] > moveScore[bestMoveIndex])
+    //             {
+    //                 bestMoveIndex = j;
+    //             }
+    //         }
+
+    //         Move tempMove = moveList[i];
+    //         moveList[i] = moveList[bestMoveIndex];
+    //         moveList[bestMoveIndex] = tempMove;
+
+    //         int temp = moveScore[i];
+    //         moveScore[i] = moveScore[bestMoveIndex];
+    //         moveScore[bestMoveIndex] = temp;
+
+    //         Move move = moveList[i];
+
+    //         int capturedPieceType = board.pieceOnSquare[move.TargetSquare];
+    //         int capturedPieceValue = (capturedPieceType == -1) ? 0 : board.PieceValue[capturedPieceType];
+
+    //         //======================================================Delta pruning======================================================
+
+    //         int safetyMargin = 200;//assign a safety margin for tactical sacrifices or something. Might have to do more work on evaluation.
+
+    //         if ((standPat + capturedPieceValue + safetyMargin < alpha) && (move.Flag != (int)Move.MoveFlag.promoteToQueen) && (move.Flag != (int)Move.MoveFlag.promoteToRook)) //if the position is hopeless that is, if standpat (current evaluation) + captured piece value + safety margin is still less than alpha, then prune the branch. 
+    //         {
+    //             continue; //prune the capture branch
+    //         }
+
+    //         //======================================================Delta pruning======================================================
+            
+            
+    //         //======================================================SEE pruning======================================================
+            
+    //         if(evaluation.CalculateSEE(board, move) < 0)
+    //         {
+    //             continue;
+    //         }
+            
+            
+            
+            
+    //         //======================================================SEE pruning======================================================
+
+            
+
+
+    //         board.MakeMove(move);
+    //         int colorThatJustMoved = board.colorToMove ^ 1;
+    //         int kingSquareAfterMove = board.GetKingSquare(colorThatJustMoved);
+
+    //         if ((kingSquareAfterMove != -1) && board.IsSquareAttacked(kingSquareAfterMove, colorThatJustMoved))
+    //         {
+    //             board.UnmakeMove(move);
+
+
+    //             continue; //Move is illegal, skip that index and continue the for loop from next index (move)
+    //         }
+    //         legalMovesPlayed++;
+
+    //         int score = -Quiescence(board, moveGenerator, evaluation, -beta, -alpha, ply + 1, qsDepth + 1);
+
+    //         board.UnmakeMove(move);
+
+
+    //         //fail soft
+    //         if (score > bestScore)
+    //         {
+    //             bestScore = score;
+    //         }
+
+
+
+
+    //         //alpha beta pruning
+    //         if(score >= beta)
+    //         {
+    //             return score; //beta cutoff
+    //         }
+
+    //         if(score > alpha)
+    //         {
+    //             alpha = score; //found a better guaranteed path/move. Update alpha
+            
+
+    //             pvTable[ply, 0] = move;
+
+    //             // 2. Copy the sequence of moves from the deeper ply
+    //             for (int j = 0; j < pvLength[ply + 1]; j++)
+    //             {
+    //                 pvTable[ply, j + 1] = pvTable[ply + 1, j];
+    //             }
+
+    //             // 3. Update the length of the sequence for this ply
+    //             pvLength[ply] = pvLength[ply + 1] + 1;
+
+
+    //         }
+    //     }
+
+    //     if(inCheck && legalMovesPlayed == 0)
+    //     {
+    //         return -100000 + ply;
+            
+    //     }
+
+
+    //     return bestScore;
+
+    // }
+
+#region quiescence
     public int Quiescence (Board board, MoveGenerator moveGenerator, Evaluation evaluation, int alpha, int beta, int ply, int qsDepth = 0)
     {
         // Periodically check if time ran out (every 2048 nodes)
@@ -575,35 +834,36 @@ public class Search
             return -100000 + ply;
         }
 
+        // bool inCheck = false;
         bool inCheck = board.IsSquareAttacked(currentKingSquare, board.colorToMove);
 
-        // Console.WriteLine($"Quiescence called! Side to move: {board.colorToMove}. In Check? {inCheck}");
+        // if (inCheck && qsDepth > 2) 
+        // {
+        //     // Return stand-pat or evaluate immediately to stop the infinite extension chain
+        //     return evaluation.EvaluatePosition(board); 
+        // }
 
-        // if(inCheck) Console.WriteLine("in check");
         Move[] moveList = new Move[256];
         int moveCount = 0;
-
-
-
         int bestScore = -500000;
+        int standPat = -500000;
 
-        
-        int standPat = evaluation.EvaluatePosition(board);
-
-
-        if(inCheck && qsDepth < 2)
+        if (inCheck)
         {
+            // 1. If in check, WE MUST EVADE. No StandPat, no cutoffs.
+            // We generate all pseudo-legal moves to ensure we don't hallucinate a mate.
             moveGenerator.GenerateAllPseudoLegalMoves(board, moveList, ref moveCount);
         }
-
         else
-        {            
+        {
+            // 2. Not in check. Now it is safe to StandPat.
+            standPat = evaluation.EvaluatePosition(board);
             bestScore = standPat;
 
-            if(standPat >= beta) return standPat;            
-            
-            if(standPat > alpha) alpha = standPat;
+            if (standPat >= beta) return standPat;
+            if (standPat > alpha) alpha = standPat;
 
+            // Generate ONLY captures/promotions
             moveGenerator.GenerateAllPseudoLegalCaptures(board, moveList, ref moveCount);
         }
 
@@ -641,117 +901,78 @@ public class Search
 
             int capturedPieceType = board.pieceOnSquare[move.TargetSquare];
             int capturedPieceValue = (capturedPieceType == -1) ? 0 : board.PieceValue[capturedPieceType];
+            bool isCapture = capturedPieceType != -1;
 
-            //======================================================Delta pruning======================================================
-
-            int safetyMargin = 200;//assign a safety margin for tactical sacrifices or something. Might have to do more work on evaluation.
-
-            if ((standPat + capturedPieceValue + safetyMargin < alpha) && (move.Flag != (int)Move.MoveFlag.promoteToQueen) && (move.Flag != (int)Move.MoveFlag.promoteToRook)) //if the position is hopeless that is, if standpat (current evaluation) + captured piece value + safety margin is still less than alpha, then prune the branch. 
+            // ======================================================
+            // PRUNING: ONLY ALLOWED IF NOT IN CHECK
+            // ======================================================
+            if (!inCheck)
             {
-                continue; //prune the capture branch
+                // Delta Pruning 
+                int safetyMargin = 200;
+                if (isCapture && (standPat + capturedPieceValue + safetyMargin < alpha) && move.Flag != (int)Move.MoveFlag.promoteToQueen && move.Flag != (int)Move.MoveFlag.promoteToRook) 
+                {
+                    continue; 
+                }
+
+                // SEE Pruning
+                if (evaluation.CalculateSEE(board, move) < 0)
+                {
+                    continue;
+                }
             }
 
-            //======================================================Delta pruning======================================================
+            // ======================================================
             
-            
-            //======================================================SEE pruning======================================================
-            
-            if(evaluation.CalculateSEE(board, move) < 0)
-            {
-                continue;
-            }
-            
-            
-            
-            
-            //======================================================SEE pruning======================================================
-
-            
-
-
             board.MakeMove(move);
             int colorThatJustMoved = board.colorToMove ^ 1;
             int kingSquareAfterMove = board.GetKingSquare(colorThatJustMoved);
 
+            // Legality check
             if ((kingSquareAfterMove != -1) && board.IsSquareAttacked(kingSquareAfterMove, colorThatJustMoved))
             {
                 board.UnmakeMove(move);
-
-
-                continue; //Move is illegal, skip that index and continue the for loop from next index (move)
+                continue;
             }
+            
             legalMovesPlayed++;
 
             int score = -Quiescence(board, moveGenerator, evaluation, -beta, -alpha, ply + 1, qsDepth + 1);
 
             board.UnmakeMove(move);
 
-
-            //fail soft
             if (score > bestScore)
             {
                 bestScore = score;
             }
 
-
-
-
-            //alpha beta pruning
-            if(score >= beta)
+            if (score >= beta)
             {
-                return score; //beta cutoff
+                return score; // Beta cutoff
             }
 
-            if(score > alpha)
+            if (score > alpha)
             {
-                alpha = score; //found a better guaranteed path/move. Update alpha
-            
-
+                alpha = score;
+                
+                // PV Table updates...
                 pvTable[ply, 0] = move;
-
-                // 2. Copy the sequence of moves from the deeper ply
-                for (int j = 0; j < pvLength[ply + 1]; j++)
-                {
+                for (int j = 0; j < pvLength[ply + 1]; j++) {
                     pvTable[ply, j + 1] = pvTable[ply + 1, j];
                 }
-
-                // 3. Update the length of the sequence for this ply
                 pvLength[ply] = pvLength[ply + 1] + 1;
-
-
             }
         }
 
-#region debug
-        // if (board.colorToMove == 1) 
-        // {
-        //     if (inCheck && legalMovesPlayed == 0) 
-        //     {
-        //         Console.WriteLine("MATE CAUGHT: But I missed the return statement!");
-        //     } 
-        //     else if (inCheck && legalMovesPlayed > 0) 
-        //     {
-        //         Console.WriteLine($"GHOST EVASION: I am in check, but I think I found {legalMovesPlayed} legal moves!");
-        //     } 
-        //     else if (!inCheck) 
-        //     {
-        //         Console.WriteLine("BLIND: I am supposed to be in check from RxP, but inCheck is FALSE!");
-        //     }
-        // }
-
-#endregion debug
-        if(inCheck && legalMovesPlayed == 0)
+        // If we are in check and have no legal moves, it is actually checkmate.
+        if (inCheck && legalMovesPlayed == 0)
         {
             return -100000 + ply;
-            
         }
-
 
         return bestScore;
 
-        // return alpha;
     }
-
 
     public void PrintPrincipalVariation()
     {
@@ -763,7 +984,7 @@ public class Search
         }
         Console.WriteLine();
     }
-
+#endregion quiescence
 
 
     public int ScoreMove(Move move, Board board, int ply)
@@ -773,6 +994,8 @@ public class Search
         int[] pieceTypeMap = {0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5}; //rook, knight, bishop, queen, king, pawn
 
         int movingPiece = board.pieceOnSquare[move.StartSquare];
+              
+        
         int capturedPieceType = board.pieceOnSquare[move.TargetSquare];
         //pieceOnSquare stores the piece type for every square. If there is a white queen on index 12 that is e2, then the 12th element in this array would be 3 since 3 is the WhiteQueen value on piece enum.
 
@@ -819,8 +1042,8 @@ public class Search
             {
                 return 79; 
             }
-            
-            return (historyMoves[board.pieceOnSquare[move.StartSquare], move.TargetSquare] * 78) >> 14;
+
+            else return (historyMoves[board.pieceOnSquare[move.StartSquare], move.TargetSquare] * 78) >> 14;
         }
         
         return 0;
@@ -869,12 +1092,6 @@ public class Search
     //     return bestMove;
     // }
 
-
-    public static ulong totalSearchNodeCount;
-    public static ulong totalQuiescenceNodeCount;
-    public static ulong totalNodeCount;
-
-
     // public Move GetBestMove(Board board, MoveGenerator moveGenerator, Evaluation evaluation, int depth, int timeLimitMs = -1)
     // {
     //     nodeCount = 0;
@@ -889,6 +1106,8 @@ public class Search
     //     killerMovesProbed = 0;
     //     historyHit = 0;
     //     historyProbed = 0;
+    //     LMRAttempts = 0;
+    //     LMRFailHigh = 0;
     //     Array.Clear(killerMoves, 0, killerMoves.Length);
 
     //     abortSearch = false;
@@ -949,28 +1168,19 @@ public class Search
             
 
     //         //==============================Logging code===================================
-    //         //DISABLE IT IN BENCHMARK RUNS
-            
     //         if (currentDepth == depth)
     //         {
     //             string engineFolder = AppDomain.CurrentDomain.BaseDirectory;
-                
-    //             // 1. Get the unique Operating System Process ID for this running instance
     //             int pid = System.Diagnostics.Process.GetCurrentProcess().Id;
-                
-    //             // 2. Embed the PID directly into the filename so instances never collide
     //             string filePath = Path.Combine(engineFolder, $"node_counts_depth8_pid_{pid}.csv");
 
-    //             // 3. Standard write check
     //             if (!System.IO.File.Exists(filePath))
     //             {
-    //                 System.IO.File.WriteAllText(filePath, "Depth,Nodes,TimeMs,HistoryHitRate\n");
+    //                 System.IO.File.WriteAllText(filePath, "Depth,Nodes,TimeMs,HistoryHitRate,LMRAttempts,LMRFailHigh\n");
     //             }
 
-    //             System.IO.File.AppendAllText(filePath, $"{currentDepth},{totalNodes},{timeMs},{historyHitRate:F2}\n");
+    //             System.IO.File.AppendAllText(filePath, $"{currentDepth},{totalNodes},{timeMs},{historyHitRate:F2},{LMRAttempts},{LMRFailHigh}\n");
     //         }
-
-    //         // DISABLE IT IN BENCHMARK RUNS
     //         //==============================Logging code===================================
             
 
@@ -980,11 +1190,18 @@ public class Search
     //     return bestMove;
     // }
 
+
+
+
+    public static ulong totalSearchNodeCount;
+    public static ulong totalQuiescenceNodeCount;
+    public static ulong totalNodeCount;
+
+
     public Move GetBestMove(Board board, MoveGenerator moveGenerator, Evaluation evaluation, int depth, int timeLimitMs = -1)
     {
         // Reset global counters for the new move
         nodeCount = 0;
-        leafCount = 0;
         qNodes = 0;
         ttProbes = 0;
         ttHits = 0;
@@ -995,6 +1212,8 @@ public class Search
         killerMovesProbed = 0;
         historyHit = 0;
         historyProbed = 0;
+        LMRAttempts = 0;
+        LMRFailHigh = 0;
         Array.Clear(killerMoves, 0, killerMoves.Length);
         // Array.Clear(historyMoves, 0, historyMoves.Length);//delete this fucking shit. OMG I hate this fucking shit. Why can't I find which piece of shit line is exploding the node count. Why am I re-adding trash code just to log this fucking shit. OMG I HATE IT
         abortSearch = false;
@@ -1016,6 +1235,17 @@ public class Search
         long savedTtCutoffs = 0;
         long savedTtMoveFirst = 0;
         long savedTtMoveBest = 0;
+        long savedHistoryHit = 0;
+        long savedHistoryProbed = 0;
+        long savedKillerMovesHit = 0;
+        long savedKillerMovesProbed = 0;
+        long savedLMRAttempts = 0;
+        long savedLMRFailHigh = 0;
+
+        
+       
+        
+        
 
         // Iterative Deepening Loop
         for (int currentDepth = 1; currentDepth <= depth; currentDepth++)
@@ -1044,6 +1274,12 @@ public class Search
             savedTtCutoffs = ttCutoffs;
             savedTtMoveFirst = ttMoveFirst;
             savedTtMoveBest = ttMoveBest;
+            savedHistoryHit = historyHit;
+            savedHistoryProbed = historyProbed;
+            savedLMRAttempts = LMRAttempts;
+            savedLMRFailHigh = LMRFailHigh;
+            savedKillerMovesHit = killerMovesHit;
+            savedKillerMovesProbed = killerMovesProbed;
 
             bestMove = pvTable[0, 0];
 
@@ -1066,21 +1302,21 @@ public class Search
         // LOGGING BLOCK
         // ====================================================================
         
-        // long finalTotalNodes = savedNodeCount + savedQNodes;
+        long finalTotalNodes = savedNodeCount + savedQNodes;
         
-        // string engineFolder = AppDomain.CurrentDomain.BaseDirectory;
-        // int pid = System.Diagnostics.Process.GetCurrentProcess().Id;
-        // string filePath = Path.Combine(engineFolder, $"move_stats_pid_{pid}.csv");
+        string engineFolder = AppDomain.CurrentDomain.BaseDirectory;
+        int pid = System.Diagnostics.Process.GetCurrentProcess().Id;
+        string filePath = Path.Combine(engineFolder, $"move_stats_pid_{pid}.csv");
 
-        // if (!System.IO.File.Exists(filePath))
-        // {
-        //     string header = "Depth,SearchNodes,QNodes,TotalNodes,TimeMs,TTProbes,TTHits,TTCutoffs,TTMoveFirst,TTMoveBest\n";
-        //     System.IO.File.WriteAllText(filePath, header);
-        // }
+        if (!System.IO.File.Exists(filePath))
+        {
+            string header = "Depth,SearchNodes,QNodes,TotalNodes,LMRAttempts,LMRFailHigh,TimeMs,TTProbes,TTHits,TTCutoffs,TTMoveFirst,TTMoveBest,HistoryProbed,HistoryHits,KillerProbed,KillerHits\n";
+            System.IO.File.WriteAllText(filePath, header);
+        }
 
-        // string logLine = $"{completedDepth},{savedNodeCount},{savedQNodes},{finalTotalNodes},{savedTimeMs},{savedTtProbes},{savedTtHits},{savedTtCutoffs},{savedTtMoveFirst},{savedTtMoveBest}\n";
+        string logLine = $"{completedDepth},{savedNodeCount},{savedQNodes},{finalTotalNodes},{savedLMRAttempts},{savedLMRFailHigh},{savedTimeMs},{savedTtProbes},{savedTtHits},{savedTtCutoffs},{savedTtMoveFirst},{savedTtMoveBest},{savedHistoryProbed},{savedHistoryHit},{savedKillerMovesProbed},{savedKillerMovesHit}\n";
         
-        // System.IO.File.AppendAllText(filePath, logLine);
+        System.IO.File.AppendAllText(filePath, logLine);
 
         //LOGGING END=======================
 

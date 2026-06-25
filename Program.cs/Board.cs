@@ -368,6 +368,7 @@ public class Board
 
         int movingPiece = pieceOnSquare[move.TargetSquare];
 
+
         //=======================debug====================================
         // if (move.TargetSquare == 5) // f1 is square index 5
         // {
@@ -432,6 +433,7 @@ public class Board
         //     pieceBitboards[movingPiece] ^= moveMask; // Remove the piece
         // }
 
+
         pieceBitboards[movingPiece] ^= moveMask; // Remove the piece
 
         occupiedMask ^= moveMask; // Return global occupancy
@@ -452,6 +454,7 @@ public class Board
 
             pieceOnSquare[move.TargetSquare] = prevCapturedPiece; // place the piece back
         }
+        
 
         
     }
@@ -570,7 +573,13 @@ public class Board
         return BitOperations.TrailingZeroCount(kingBitBoard);
     }
 
-    
+    public bool HasHeavyPieces(int color)
+    {
+        ulong heavyPieves = (color == 0) ? (colorBitboard[(int)PieceTeam.WhitePieces] &~pieceBitboards[(int)Piece.WhiteKing]) : colorBitboard[(int)PieceTeam.BlackPieces] &~pieceBitboards[(int)Piece.BlackKing];
+
+        if((heavyPieves ^ pieceBitboards[(int)Piece.WhitePawns + (color * 6)]) != 0) return true;
+        return false;
+    }
 
 
 }
