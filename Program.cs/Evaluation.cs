@@ -6,7 +6,7 @@ using System.Numerics;
 using static Board;
 public class Evaluation
 {
-    public static readonly int[,] ReductionTable = new int[64,64]; // a table to store logarithms for reduction value.
+    public static readonly int[,] ReductionTable = new int[64,256]; // a table to store logarithms for reduction value.
 
 
     static readonly int[] ColorMultiplier = {1, -1};
@@ -986,7 +986,7 @@ public class Evaluation
     {
         for (int d = 0; d < 64; d++) 
         {
-            for (int m = 0; m < 64; m++) 
+            for (int m = 0; m < 256; m++) 
             {
                 // Avoid math errors with log(0)
                 if (d > 0 && m > 0) 

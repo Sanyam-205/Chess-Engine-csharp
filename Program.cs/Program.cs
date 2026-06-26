@@ -19,6 +19,7 @@ class Program
 
         UCIUtility.Loop(board, moveGenerator, evaluation, search);
 
+
         // string fen1 = "8/5pk1/1R2p3/4P1pp/8/4K3/8/5r2 w - - 8 61";
         // string errorFen2 = "Q1Q3Q1/8/8/2P5/8/1K1k3P/8/8 b - - 14 82";
 
@@ -35,10 +36,10 @@ class Program
         // FenUtility.LoadFromFen(fen, board);
         // // for(int d = 1; d <=4; d++)
         // // {
-            int eval = search.StartSearch(board, moveGenerator, evaluation, 9);
-        // //     Console.WriteLine($"Depth{d}");
-            // Console.WriteLine($"Evaluation :{eval} \nSearch nodes :{search.nodeCount :N0} \nQuiescence nodes :{search.qNodes :N0} \nTotal nodes :{search.nodeCount + search.qNodes :N0}");
-            // search.PrintPrincipalVariation();
+        //     int eval = search.StartSearch(board, moveGenerator, evaluation, 9);
+        // // //     Console.WriteLine($"Depth{d}");
+        //     Console.WriteLine($"Evaluation :{eval} \nSearch nodes :{search.nodeCount :N0} \nQuiescence nodes :{search.qNodes :N0} \nTotal nodes :{search.nodeCount + search.qNodes :N0}");
+        //     search.PrintPrincipalVariation();
         //     Console.WriteLine();
 
         // }
@@ -218,7 +219,7 @@ Total nodes :39,049,017
         // };
         */
 
-
+        /*
         // string[] crashTest =
         // {
         //
@@ -303,25 +304,12 @@ Total nodes :39,049,017
         // "position startpos moves b1c3 d7d5 e2e3 e7e5 d2d4 e5e4 f1b5 c7c6 b5e2 d8g5 e1f1 g5d8 f2f3 g8f6 f3e4 d5e4 c1d2 f8d6 g1h3 c8h3 g2h3 e8g8 f1g1 c6c5 d4c5 d6c5 b2b4 c5b4 c3e4 f6e4 d2b4 d8g5 g1f1 f8d8 d1e1 g5f5 f1g2 f5g5 g2f3 g5f5 f3g2 f5g5 g2f3 b8c6 a1d1 g5f5 f3g2 f5g5 g2f3 a7a5 b4a3 g5f6 f3e4 d8e8 e4d3 a8d8 d3c4 b7b5 c4b5 f6f5 b5c6 f5e4 c6c7 d8c8 c7b6 c8b8 b6a5 e4a8 e2a6 e8e5 d1d5 e5d5 a3c5 d5c5 a5a4 a8a6 e1a5 c5a5",
         // "go depth 6",  
         // };
+        */
 
         // string[] crashTest =
         // {
-        //     "position startpos moves e2e3",
-        //     "go wtime 0 btime 121599 binc 1000",
-        //     "position startpos moves e2e3 d7d5 d2d4",
-        //     "go wtime -12679 btime 119663 binc 1000",
-        //     "position startpos moves e2e3 d7d5 d2d4 g8f6 f1d3",
-        //     "go wtime -19194 btime 117770 binc 1000",
-        //     "position startpos moves e2e3 d7d5 d2d4 g8f6 f1d3 b8c6 b1c3",
-        //     "go wtime -26973 btime 115915 binc 1000",
-        //     "position startpos moves e2e3 d7d5 d2d4 g8f6 f1d3 b8c6 b1c3 c8g4 f2f3",
-        //     "go wtime -30935 btime 114097 binc 1000",
-        //     "position startpos moves e2e3 d7d5 d2d4 g8f6 f1d3 b8c6 b1c3 c8g4 f2f3 g4d7 g1e2",
-        //     "go wtime -35418 btime 112316 binc 1000",
-        //     "position startpos moves e2e3 d7d5 d2d4 g8f6 f1d3 b8c6 b1c3 c8g4 f2f3 g4d7 g1e2 e7e5 d4e5",
-        //     "go wtime -51106 btime 110570 binc 1000",
-        //     "position startpos moves e2e3 d7d5 d2d4 g8f6 f1d3 b8c6 b1c3 c8g4 f2f3 g4d7 g1e2 e7e5 d4e5 c6e5 c1d2",
-        //     "go wtime -59913 btime 108859 binc 1000",
+        
+            
         // };
 
 
@@ -986,6 +974,27 @@ TT Cutoffs: 14206   - kiwipete
 
         // Console.ReadLine();
 
+
+    #region magnum_opus_of_tournament_testing
+        // 1. Define the path to the text file you generated
+        // string filePath = @"D:\ArborHelper\uci_commands.txt"; // Use the full absolute path if the file isn't in your build directory
+
+        // // 2. Read the file into the string array
+        // string[] crashTest = System.IO.File.ReadAllLines(filePath);
+
+        // // 3. Your existing code to feed the engine
+        // string simulatedInput = string.Join(Environment.NewLine, crashTest);
+
+        // using (System.IO.StringReader reader = new System.IO.StringReader(simulatedInput)) 
+        // {
+        //     Console.SetIn(reader);
+            
+        //     /* The UCI loop will read commands line-by-line. 
+        //     Because "go depth 6" blocks while searching, it naturally waits 
+        //     for a response before reading the next line! */
+        //     UCIUtility.Loop(board, moveGenerator, evaluation, search);
+        // }
+    #endregion
 
 
     }

@@ -135,6 +135,46 @@ public class Search
         }
         if (abortSearch) return 0;
 
+
+        // ========================================================================
+        // REPETITION DETECTION
+        // ========================================================================
+        if (ply > 0)
+        {
+            // Step backward by 2. A position can only repeat when it is the 
+            // same player's turn to move.
+            for (int i = board.plyCount - 2; i >= 0; i -= 2)
+            {
+                // Compare the current board hash with the historical hash
+                if (board.currentHash == board.history[i].currentHash)
+                {
+                    return 0; // Instantly return a draw score to break the loop
+                }
+                
+                // OPTIMIZATION: A position cannot repeat if a piece was captured.
+                // We can safely break the loop early to save processing time.
+                if (board.history[i].capturedPieceType != -1) 
+                {
+                    break;
+                }
+            }
+        }
+        // ========================================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         nodeCount++;
 
         if (ply >= MaxPly)
@@ -407,13 +447,13 @@ public class Search
                     // Try ZWS at a REDUCED depth (e.g., depth - 2)
                     // (depth - 2) = 1 ply reduction. (depth - 3) = 2 ply reduction. Replaced with the Logarithmic reduction value.
 
-                    int reduction = Evaluation.ReductionTable[depth, legalMovesPlayed];
+                    int reduction = Evaluation.ReductionTable[depth, Math.Min(legalMovesPlayed, 255)];
                     // int reducedDepth = depth - 1 - reduction;
                     int reducedDepth = Math.Max(1, depth - 1 - reduction);
                     score = -NegaMax(board, moveGenerator, evaluation, reducedDepth, -alpha - 1, -alpha, ply + 1);
 
                     // If the reduced search failed high, we must do a normal depth ZWS
-                    if (score > alpha && score < beta) 
+                    if (score > alpha /*&& score < beta*/) 
                     {
                         LMRFailHigh++;
                         score = -NegaMax(board, moveGenerator, evaluation, depth - 1, -alpha - 1, -alpha, ply + 1);
@@ -440,7 +480,12 @@ public class Search
                 }
             }
 
-            if (abortSearch) return 0;
+            if (abortSearch) 
+            {            
+                board.UnmakeMove(move);
+                return 0;
+
+            }
 
             board.UnmakeMove(move);
 
@@ -1293,30 +1338,34 @@ public class Search
             long currentTimeMs = Math.Max(1, sw.ElapsedMilliseconds); 
             long nps = (currentTotalNodes * 1000) / currentTimeMs;
 
-            Console.WriteLine($"Search Nodes: {nodeCount}, Quiescence Nodes: {qNodes}");
+            // Console.WriteLine($"Search Nodes: {nodeCount}, Quiescence Nodes: {qNodes}");
+            // if(currentDepth == 8)
+            // {
+
             Console.WriteLine($"Best move = {BoardUtility.MoveToUci(bestMove)}");
             Console.WriteLine($"info depth {currentDepth} score cp {score} time {currentTimeMs} nodes {currentTotalNodes} nps {nps} pv {pvString.TrimEnd()}");
+            // }
         }
 
         // ====================================================================
         // LOGGING BLOCK
         // ====================================================================
         
-        long finalTotalNodes = savedNodeCount + savedQNodes;
+        // long finalTotalNodes = savedNodeCount + savedQNodes;
         
-        string engineFolder = AppDomain.CurrentDomain.BaseDirectory;
-        int pid = System.Diagnostics.Process.GetCurrentProcess().Id;
-        string filePath = Path.Combine(engineFolder, $"move_stats_pid_{pid}.csv");
+        // string engineFolder = AppDomain.CurrentDomain.BaseDirectory;
+        // int pid = System.Diagnostics.Process.GetCurrentProcess().Id;
+        // string filePath = Path.Combine(engineFolder, $"move_stats_pid_{pid}.csv");
 
-        if (!System.IO.File.Exists(filePath))
-        {
-            string header = "Depth,SearchNodes,QNodes,TotalNodes,LMRAttempts,LMRFailHigh,TimeMs,TTProbes,TTHits,TTCutoffs,TTMoveFirst,TTMoveBest,HistoryProbed,HistoryHits,KillerProbed,KillerHits\n";
-            System.IO.File.WriteAllText(filePath, header);
-        }
+        // if (!System.IO.File.Exists(filePath))
+        // {
+        //     string header = "Depth,SearchNodes,QNodes,TotalNodes,LMRAttempts,LMRFailHigh,TimeMs,TTProbes,TTHits,TTCutoffs,TTMoveFirst,TTMoveBest,HistoryProbed,HistoryHits,KillerProbed,KillerHits\n";
+        //     System.IO.File.WriteAllText(filePath, header);
+        // }
 
-        string logLine = $"{completedDepth},{savedNodeCount},{savedQNodes},{finalTotalNodes},{savedLMRAttempts},{savedLMRFailHigh},{savedTimeMs},{savedTtProbes},{savedTtHits},{savedTtCutoffs},{savedTtMoveFirst},{savedTtMoveBest},{savedHistoryProbed},{savedHistoryHit},{savedKillerMovesProbed},{savedKillerMovesHit}\n";
+        // string logLine = $"{completedDepth},{savedNodeCount},{savedQNodes},{finalTotalNodes},{savedLMRAttempts},{savedLMRFailHigh},{savedTimeMs},{savedTtProbes},{savedTtHits},{savedTtCutoffs},{savedTtMoveFirst},{savedTtMoveBest},{savedHistoryProbed},{savedHistoryHit},{savedKillerMovesProbed},{savedKillerMovesHit}\n";
         
-        System.IO.File.AppendAllText(filePath, logLine);
+        // System.IO.File.AppendAllText(filePath, logLine);
 
         //LOGGING END=======================
 
