@@ -12,6 +12,21 @@ class Program
     static void Main()
     {
         
+    AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
+    {
+        Exception ex = (Exception)e.ExceptionObject;
+        int pid = UCIUtility.enginePid;
+        
+        string crashLog = $"[{DateTime.Now}] FATAL CRASH (PID: {pid}):\n{ex.ToString()}\n\n";
+        System.IO.File.AppendAllText($"arbor_fatal_crash_{pid}.txt", crashLog);
+    };
+
+
+
+
+
+
+
         Board board = new Board();
         MoveGenerator moveGenerator = new MoveGenerator(); 
         Search search = new Search();
@@ -20,7 +35,7 @@ class Program
         UCIUtility.Loop(board, moveGenerator, evaluation, search);
 
 
-        // string fen1 = "8/5pk1/1R2p3/4P1pp/8/4K3/8/5r2 w - - 8 61";
+        // string fen1 = "8/8/4K3/2p5/4k3/8/2R5/8 b - - 7 58";
         // string errorFen2 = "Q1Q3Q1/8/8/2P5/8/1K1k3P/8/8 b - - 14 82";
 
 
@@ -33,13 +48,13 @@ class Program
         // string fen = "r3r1k1/2pp1p1p/p2b2q1/3P1nN1/p2B4/1P6/P1PQ1PPP/R3R1K1 w - - 1 5";
         // string fen = "2r1r1k1/pp1Qbp1p/1q4p1/n2p4/3P1B2/3B3P/PP3PP1/3RR1K1 b - - 0 21";
         // string fen = TestPositions.fen1;
-        // FenUtility.LoadFromFen(fen, board);
+        // FenUtility.LoadFromFen(fen1, board);
         // // for(int d = 1; d <=4; d++)
         // // {
-        //     int eval = search.StartSearch(board, moveGenerator, evaluation, 9);
+            // int eval = search.StartSearch(board, moveGenerator, evaluation, 35);
         // // //     Console.WriteLine($"Depth{d}");
-        //     Console.WriteLine($"Evaluation :{eval} \nSearch nodes :{search.nodeCount :N0} \nQuiescence nodes :{search.qNodes :N0} \nTotal nodes :{search.nodeCount + search.qNodes :N0}");
-        //     search.PrintPrincipalVariation();
+            // Console.WriteLine($"Evaluation :{eval} \nSearch nodes :{search.nodeCount :N0} \nQuiescence nodes :{search.qNodes :N0} \nTotal nodes :{search.nodeCount + search.qNodes :N0}");
+            // search.PrintPrincipalVariation();
         //     Console.WriteLine();
 
         // }

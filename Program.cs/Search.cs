@@ -125,6 +125,12 @@ public class Search
 
     public int NegaMax(Board board, MoveGenerator moveGenerator, Evaluation evaluation, int depth, int alpha, int beta, int ply) 
     {
+        if (ply < MaxPly)
+        {
+            pvLength[ply] = 0;
+        }
+
+
         // Periodically check if time ran out (every 2048 nodes)
         if (allocatedTimeMs != -1 && ((nodeCount + qNodes) & 2047) == 0)
         {
@@ -145,12 +151,11 @@ public class Search
             // same player's turn to move.
             for (int i = board.plyCount - 2; i >= 0; i -= 2)
             {
-                // Compare the current board hash with the historical hash
-                if (board.currentHash == board.history[i].currentHash)
+                if (board.currentHash != 0 && board.currentHash == board.history[i].currentHash)
                 {
-                    return 0; // Instantly return a draw score to break the loop
+                    // Now, when it returns 0, the pvLength is safely 0! No garbage copying!
+                    return 0; 
                 }
-                
                 // OPTIMIZATION: A position cannot repeat if a piece was captured.
                 // We can safely break the loop early to save processing time.
                 if (board.history[i].capturedPieceType != -1) 
@@ -182,8 +187,8 @@ public class Search
             //THE PLY COUNT HAS EXCEEDED MAX SET LIMIT. DO SOMETHING IDK
             return evaluation.EvaluatePosition(board);
         }
-
-        pvLength[ply] = 0; //set it to 0 for each recursive call to prevent PV pollution
+        
+        // pvLength[ply] = 0; //set it to 0 for each recursive call to prevent PV pollution
 
         //TT
         int originalAlpha = alpha;
@@ -590,14 +595,39 @@ public class Search
                 alpha = score; //We found a better move for ourselves
              
                 pvTable[ply, 0] = move; //stores the best move found at this depth.                
+                
+                
                 // 2. Copy the sequence of moves from the deeper ply
-                for (int j = 0; j < pvLength[ply + 1]; j++)
+                // for (int j = 0; j < pvLength[ply + 1]; j++)
+                // {
+                //     pvTable[ply, j + 1] = pvTable[ply + 1, j];
+                // }
+
+                // // 3. Update the length of the sequence for this ply
+                // pvLength[ply] = pvLength[ply + 1] + 1;
+
+
+                // Only attempt to copy the rest of the line if the next ply actually exists in memory
+                if (ply + 1 < MaxPly) 
                 {
-                    pvTable[ply, j + 1] = pvTable[ply + 1, j];
+                    for (int j = 0; j < pvLength[ply + 1]; j++)
+                    {
+                        // Second shield layer: make sure j + 1 doesn't exceed MaxPly
+                        if (j + 1 < MaxPly) 
+                        {
+                            pvTable[ply, j + 1] = pvTable[ply + 1, j];
+                        }
+                    }
+                    pvLength[ply] = pvLength[ply + 1] + 1;
+                }
+                else 
+                {
+                    // If we are at the very edge of the array, the length is just this 1 move.
+                    pvLength[ply] = 1; 
                 }
 
-                // 3. Update the length of the sequence for this ply
-                pvLength[ply] = pvLength[ply + 1] + 1;
+
+
             }
 
             if (isQuietMove) 
@@ -882,11 +912,11 @@ public class Search
         // bool inCheck = false;
         bool inCheck = board.IsSquareAttacked(currentKingSquare, board.colorToMove);
 
-        // if (inCheck && qsDepth > 2) 
-        // {
-        //     // Return stand-pat or evaluate immediately to stop the infinite extension chain
-        //     return evaluation.EvaluatePosition(board); 
-        // }
+        if (inCheck && qsDepth > 2) 
+        {
+            // Return stand-pat or evaluate immediately to stop the infinite extension chain
+            return evaluation.EvaluatePosition(board); 
+        }
 
         Move[] moveList = new Move[256];
         int moveCount = 0;
@@ -1002,10 +1032,31 @@ public class Search
                 
                 // PV Table updates...
                 pvTable[ply, 0] = move;
-                for (int j = 0; j < pvLength[ply + 1]; j++) {
-                    pvTable[ply, j + 1] = pvTable[ply + 1, j];
+                // for (int j = 0; j < pvLength[ply + 1]; j++) {
+                //     pvTable[ply, j + 1] = pvTable[ply + 1, j];
+                // }
+                // pvLength[ply] = pvLength[ply + 1] + 1;
+
+
+                // Only attempt to copy the rest of the line if the next ply actually exists in memory
+                if (ply + 1 < MaxPly) 
+                {
+                    for (int j = 0; j < pvLength[ply + 1]; j++)
+                    {
+                        // Second shield layer: make sure j + 1 doesn't exceed MaxPly
+                        if (j + 1 < MaxPly) 
+                        {
+                            pvTable[ply, j + 1] = pvTable[ply + 1, j];
+                        }
+                    }
+                    pvLength[ply] = pvLength[ply + 1] + 1;
                 }
-                pvLength[ply] = pvLength[ply + 1] + 1;
+                else 
+                {
+                    // If we are at the very edge of the array, the length is just this 1 move.
+                    pvLength[ply] = 1; 
+                }
+
             }
         }
 
@@ -1288,8 +1339,7 @@ public class Search
         long savedLMRFailHigh = 0;
 
         
-       
-        
+        int pid = UCIUtility.enginePid;
         
 
         // Iterative Deepening Loop
@@ -1298,7 +1348,32 @@ public class Search
             int alpha = -infinity;
             int beta = infinity;
             
-            int score = NegaMax(board, moveGenerator, evaluation, currentDepth, alpha, beta, 0);
+            int score = 0; 
+            
+            // ====================================================================
+            // CRASH DUMP SHIELD
+            // ====================================================================
+
+            try 
+            {
+                score = NegaMax(board, moveGenerator, evaluation, currentDepth, alpha, beta, 0);
+            }
+            catch (Exception ex)
+            {
+
+                BoardPrinter.PrintBitboard(board); 
+                
+                string crashLog = $"[{DateTime.Now}] FATAL CRASH AT DEPTH {currentDepth}(PID: {pid})!!\n\nEXCEPTION:\n{ex.ToString()}\n\n--------------------------\n";
+                
+                // Writes the error to a file in the same folder as the engine executable
+                System.IO.File.AppendAllText("arbor_crash_dump.txt", crashLog);
+                
+                // Instantly re-throws the error to ensure the engine disconnects cleanly
+                throw; 
+            }
+            
+            
+            // NegaMax(board, moveGenerator, evaluation, currentDepth, alpha, beta, 0);
             
             // If we ran out of time, break IMMEDIATELY.
             // Do not update the snapshot variables. They will retain the stats from the previous depth.
@@ -1338,13 +1413,9 @@ public class Search
             long currentTimeMs = Math.Max(1, sw.ElapsedMilliseconds); 
             long nps = (currentTotalNodes * 1000) / currentTimeMs;
 
-            // Console.WriteLine($"Search Nodes: {nodeCount}, Quiescence Nodes: {qNodes}");
-            // if(currentDepth == 8)
-            // {
 
             Console.WriteLine($"Best move = {BoardUtility.MoveToUci(bestMove)}");
             Console.WriteLine($"info depth {currentDepth} score cp {score} time {currentTimeMs} nodes {currentTotalNodes} nps {nps} pv {pvString.TrimEnd()}");
-            // }
         }
 
         // ====================================================================
@@ -1354,7 +1425,6 @@ public class Search
         // long finalTotalNodes = savedNodeCount + savedQNodes;
         
         // string engineFolder = AppDomain.CurrentDomain.BaseDirectory;
-        // int pid = System.Diagnostics.Process.GetCurrentProcess().Id;
         // string filePath = Path.Combine(engineFolder, $"move_stats_pid_{pid}.csv");
 
         // if (!System.IO.File.Exists(filePath))

@@ -6,6 +6,7 @@
     <AssemblyName>Arbor</AssemblyName>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <DebugType>embedded</DebugType>
     <UserSecretsId>1cb2ebb8-0279-46bc-ad84-f39d77c6d641</UserSecretsId>
   </PropertyGroup>
 

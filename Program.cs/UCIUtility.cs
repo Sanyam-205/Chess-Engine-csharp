@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 public static class UCIUtility
 {
@@ -14,6 +15,8 @@ public static class UCIUtility
             
             //GUI might send null input if pipeline breaks somehow
             if (string.IsNullOrEmpty(input)) continue;
+
+            // LogUciCommand(input.Trim());
 
             string[] tokens = input.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
             string command = tokens[0].ToLower();
@@ -86,6 +89,16 @@ public static class UCIUtility
         }
 
 
+    }
+    public static readonly int enginePid = System.Diagnostics.Process.GetCurrentProcess().Id;
+    static void LogUciCommand(string input)
+    {
+        string engineFolder = AppDomain.CurrentDomain.BaseDirectory;
+        
+        // Inject the PID directly into the file name
+        string filePath = Path.Combine(engineFolder, $"uci_commands_{enginePid}.txt");
+        
+        File.AppendAllText(filePath, input + Environment.NewLine);
     }
 
     static void WriteToFile()
