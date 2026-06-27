@@ -16,7 +16,7 @@ public static class UCIUtility
             //GUI might send null input if pipeline breaks somehow
             if (string.IsNullOrEmpty(input)) continue;
 
-            LogUciCommand(input.Trim());
+            // LogUciCommand(input.Trim());
 
             string[] tokens = input.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
             string command = tokens[0].ToLower();
