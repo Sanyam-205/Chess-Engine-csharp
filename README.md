@@ -11,7 +11,7 @@ A simple alpha-beta search has gradually grown into a modern chess engine throug
 Rather than focusing only on playing strength, Arbor has always been about learning the ideas behind chess engine design. Every major feature has been implemented incrementally, tested against previous versions, and documented throughout its development.
 
 ## Try Arbor
-Play against Arbor on Lichess: <[Play!](https://lichess.org/@/ArborBot)>
+Play against Arbor on Lichess: [Play!](https://lichess.org/@/ArborBot)
 
 ## Features
 
@@ -51,7 +51,6 @@ An arbor is a tree—a fitting name for both the search tree explored by every c
 ## Future Work
 
 Version 1.0 marks the completion of Arbor's core architecture. Whether the engine itself continues to grow or shifts toward a dedicated front-end remains to be seen, but this is certainly not the end of the project.
----
 
 Thank you for checking out Arbor.
 If you'd like to follow my other projects, you can find them on my GitHub profile
