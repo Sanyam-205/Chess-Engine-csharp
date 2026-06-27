@@ -35,7 +35,7 @@ class Program
         UCIUtility.Loop(board, moveGenerator, evaluation, search);
 
 
-        // string fen1 = "8/1k6/8/2r5/3K4/8/8/8 w - - 0 78";
+        // string fen1 = "3n4/KP6/4k3/8/8/8/8/8 b - - 0 1";
         // string errorFen2 = "Q1Q3Q1/8/8/2P5/8/1K1k3P/8/8 b - - 14 82";
 
 
@@ -49,10 +49,10 @@ class Program
         // string fen = "2r1r1k1/pp1Qbp1p/1q4p1/n2p4/3P1B2/3B3P/PP3PP1/3RR1K1 b - - 0 21";
         // string fen = TestPositions.fen13;
         // FenUtility.LoadFromFen(fen1, board);
-        // // // // for(int d = 1; d <=4; d++)
-        // // // // {
-        //     int eval = search.StartSearch(board, moveGenerator, evaluation, 9);
-        // // // //     Console.WriteLine($"Depth{d}");
+        // // // // // // for(int d = 1; d <=4; d++)
+        // // // // // // {
+        //     int eval = search.StartSearch(board, moveGenerator, evaluation, 2);
+        // // // // // // //     Console.WriteLine($"Depth{d}");
         //     Console.WriteLine($"Evaluation :{eval} \nSearch nodes :{search.nodeCount :N0} \nQuiescence nodes :{search.qNodes :N0} \nTotal nodes :{search.nodeCount + search.qNodes :N0}");
         //     search.PrintPrincipalVariation();
         //     Console.WriteLine();
@@ -991,7 +991,7 @@ TT Cutoffs: 14206   - kiwipete
 
 
     #region magnum_opus_of_tournament_testing
-        // 1. Define the path to the text file you generated
+        // // 1. Define the path to the text file you generated
         // string filePath = @"D:\ArborHelper\crashedGame.txt"; 
 
         // // 2. Read the file into the string array

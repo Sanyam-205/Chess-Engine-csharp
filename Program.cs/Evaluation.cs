@@ -34,6 +34,9 @@ public class Evaluation
       /*Rank 8*/  0xFF00000000000000UL 
     };
 
+    static readonly ulong LightSquares = 0x55AA55AA55AA55AA;
+    // static readonly ulong DarkSquares  = 0xAA55AA55AA55AA55;
+
     static readonly ulong[] passedPawnFileMask = new ulong[8];
     static readonly ulong[] whitePassedPawnMask = new ulong[64];
     static readonly ulong[] blackPassedPawnMask = new ulong[64];
@@ -50,12 +53,24 @@ public class Evaluation
 
     public int EvaluatePosition(Board board)
     {
+        ulong whiteKnights = board.pieceBitboards[(int)Piece.WhiteKnights];
+        ulong blackKnights = board.pieceBitboards[(int)Piece.BlackKnights];
+        ulong whiteBishops = board.pieceBitboards[(int)Piece.WhiteBishops];
+        ulong blackBishops = board.pieceBitboards[(int)Piece.BlackBishops];
+        ulong whiteRooks = board.pieceBitboards[(int)Piece.WhiteRooks];
+        ulong blackRooks = board.pieceBitboards[(int)Piece.BlackRooks];
+        ulong whiteQueens = board.pieceBitboards[(int)Piece.WhiteQueens];
+        ulong blackQueens = board.pieceBitboards[(int)Piece.BlackQueens];
+        ulong whitePawns = board.pieceBitboards[(int)Piece.WhitePawns];
+        ulong blackPawns = board.pieceBitboards[(int)Piece.BlackPawns];
+        ulong whiteKing = board.pieceBitboards[(int)Piece.WhiteKing];
+        ulong blackKing = board.pieceBitboards[(int)Piece.BlackKing];
         
-        // int score = 340 * (BitOperations.PopCount(board.pieceBitboards[(int)Piece.WhiteBishops]) - BitOperations.PopCount(board.pieceBitboards[(int)Piece.BlackBishops])) + 
-        // 320 * (BitOperations.PopCount(board.pieceBitboards[(int)Piece.WhiteKnights]) - BitOperations.PopCount(board.pieceBitboards[(int)Piece.BlackKnights])) + 
-        // 900 * (BitOperations.PopCount(board.pieceBitboards[(int)Piece.WhiteQueens]) - BitOperations.PopCount(board.pieceBitboards[(int)Piece.BlackQueens])) + 
-        // 500 * (BitOperations.PopCount(board.pieceBitboards[(int)Piece.WhiteRooks]) - BitOperations.PopCount(board.pieceBitboards[(int)Piece.BlackRooks])) + 
-        // 100 * (BitOperations.PopCount(board.pieceBitboards[(int)Piece.WhitePawns]) - BitOperations.PopCount(board.pieceBitboards[(int)Piece.BlackPawns]));
+        ulong pawns = whitePawns | blackPawns;
+        ulong rooks = whiteRooks | blackRooks;
+        ulong queens = whiteQueens | blackQueens;
+
+        if (InsufficientMaterial(pawns, queens, rooks, blackKnights, whiteKnights, blackBishops, whiteBishops)) return 0;
 
 #region
      
@@ -65,7 +80,7 @@ public class Evaluation
         int blackEndgameScore = 0;
 
 #region knight
-        ulong whiteKnights = board.pieceBitboards[(int)Piece.WhiteKnights];
+        
         while(whiteKnights!=0)
         {
             int squareIndex = BitOperations.TrailingZeroCount(whiteKnights);
@@ -82,7 +97,7 @@ public class Evaluation
             whiteKnights &= whiteKnights -1;
         }
         
-        ulong blackKnights = board.pieceBitboards[(int)Piece.BlackKnights];
+        
         while(blackKnights!=0)
         {
             int squareIndex = BitOperations.TrailingZeroCount(blackKnights);
@@ -100,7 +115,7 @@ public class Evaluation
 #endregion knight
 
 #region bishop
-        ulong whiteBishops = board.pieceBitboards[(int)Piece.WhiteBishops];
+        
         while(whiteBishops!=0)
         {
             int squareIndex = BitOperations.TrailingZeroCount(whiteBishops);
@@ -118,7 +133,7 @@ public class Evaluation
             whiteBishops &= whiteBishops -1;
         }
 
-        ulong blackBishops = board.pieceBitboards[(int)Piece.BlackBishops];
+        
         while(blackBishops!=0)
         {
             int squareIndex = BitOperations.TrailingZeroCount(blackBishops);
@@ -140,7 +155,7 @@ public class Evaluation
 
 
 #region rook
-        ulong whiteRooks = board.pieceBitboards[(int)Piece.WhiteRooks];
+        
         while(whiteRooks!=0)
         {
             int squareIndex = BitOperations.TrailingZeroCount(whiteRooks);
@@ -156,7 +171,7 @@ public class Evaluation
             whiteRooks &= whiteRooks - 1;
         }
 
-        ulong blackRooks = board.pieceBitboards[(int)Piece.BlackRooks];
+        
         while(blackRooks!=0)
         {
             int squareIndex = BitOperations.TrailingZeroCount(blackRooks);
@@ -175,7 +190,7 @@ public class Evaluation
 
 
 #region  queen
-        ulong whiteQueens = board.pieceBitboards[(int)Piece.WhiteQueens];
+        
         while(whiteQueens != 0)
         {
             int squareIndex = BitOperations.TrailingZeroCount(whiteQueens);
@@ -192,7 +207,7 @@ public class Evaluation
 
         }
 
-        ulong blackQueens = board.pieceBitboards[(int)Piece.BlackQueens];
+        
         while(blackQueens!= 0)
         {
             int squareIndex = BitOperations.TrailingZeroCount(blackQueens);
@@ -212,7 +227,7 @@ public class Evaluation
 
 
 #region pawns
-        ulong whitePawns = board.pieceBitboards[(int)Piece.WhitePawns];
+        
         while(whitePawns!=0)
         {
             int squareIndex = BitOperations.TrailingZeroCount(whitePawns);
@@ -266,7 +281,7 @@ public class Evaluation
             whitePawns &= whitePawns -1;
         }
 
-        ulong blackPawns = board.pieceBitboards[(int)Piece.BlackPawns];
+        
         while(blackPawns!=0)
         {
             int squareIndex = BitOperations.TrailingZeroCount(blackPawns);
@@ -325,7 +340,7 @@ public class Evaluation
 
 
 #region king
-        ulong whiteKing = board.pieceBitboards[(int)Piece.WhiteKing];
+        
         while(whiteKing != 0)
         {
             int squareIndex = BitOperations.TrailingZeroCount(whiteKing);
@@ -340,7 +355,7 @@ public class Evaluation
             whiteKing &= whiteKing-1;
         }
 
-        ulong blackKing = board.pieceBitboards[(int)Piece.BlackKing];
+        
         while(blackKing!= 0)
         {
             int squareIndex = BitOperations.TrailingZeroCount(blackKing);
@@ -380,7 +395,35 @@ public class Evaluation
  
         score *= ColorMultiplier[board.colorToMove];
 
-
+        // if (safePhase == 1)
+        // {
+        //     bool whiteHasPawns = whitePawns != 0;
+        //     bool blackHasPawns = blackPawns != 0;
+            
+        //     if (!whiteHasPawns && blackHasPawns) 
+        //     {
+        //         // White has no pawns, but Black does. 
+        //         // Since safePhase == 1, if White has the minor piece, White can only draw.
+        //         bool whiteHasMinorPiece = (BitOperations.PopCount(whiteBishops) + BitOperations.PopCount(whiteKnights)) == 1;
+                
+        //         if (whiteHasMinorPiece)
+        //         {
+        //             score = Math.Min(score, 0); 
+        //         }
+        //     }
+        //     else if (whiteHasPawns && !blackHasPawns)
+        //     {
+        //         // Black has no pawns, but White does.
+        //         // Since safePhase == 1, if White DOES NOT have the minor piece, Black must have it.
+        //         bool whiteHasMinorPiece = (BitOperations.PopCount(whiteBishops) + BitOperations.PopCount(whiteKnights)) == 1;
+                
+        //         if (!whiteHasMinorPiece)
+        //         {
+        //             // Black can only draw.
+        //             score = Math.Max(score, 0); 
+        //         }
+        //     }
+        // }
         return score;
     }
 
@@ -1002,6 +1045,41 @@ public class Evaluation
 
     }
 
+    
+
+    bool InsufficientMaterial(ulong pawns, ulong queens, ulong rooks, ulong BKnight, ulong WKnight, ulong BBishop, ulong WBishop)
+    {
+        if(pawns != 0 || rooks != 0 || queens != 0) return false;
+
+        int whiteKnights = BitOperations.TrailingZeroCount(WKnight);
+        int blackKnight = BitOperations.TrailingZeroCount(BKnight);
+        int whiteBishop = BitOperations.TrailingZeroCount(WBishop);
+        int blackBishop = BitOperations.TrailingZeroCount(BBishop);
+
+        int totalMinorPieces = whiteKnights + blackKnight + whiteBishop + blackBishop;
+
+        if(totalMinorPieces == 0) return true; //Only kings remain
+        if(totalMinorPieces == 1) return true; //only one minor piece remain along with kings so also insufficient mating material
+
+        if(whiteBishop == 1 && blackBishop == 1 && totalMinorPieces == 2)
+        {
+            // if both white bishop and black bishop are of the same color type then it is a draw.
+
+            bool whiteLightBishop = (WBishop & LightSquares) != 0; 
+            bool blackLightBishop = (BBishop & LightSquares) != 0;
+
+            if(whiteLightBishop & blackLightBishop) return true;
+        }
+        return false;
+    }
+
+    // bool ClampScore(ulong pawns, ulong queens, ulong rooks, ulong BKnight, ulong WKnight, ulong BBishop, ulong WBishop)
+    // {
+    //     if(pawns != 0 || rooks != 0 || queens != 0) return false;
+
+    //     return false;
+    // }
+
 
 
 
@@ -1032,6 +1110,7 @@ public class Evaluation
            {460,  340,    220,    580,     0,    100},     // KING
            {560,  440,    320,    680,     0,    200}      // PAWN
     };
+
 
 
 

@@ -232,7 +232,7 @@ public class Search
         // // // ========================================================================
         // // // NULL MOVE PRUNING (NMP)
         // // // ========================================================================
-        // // int R = 2; // Depth reduction factor 
+        // int R = 2; // Depth reduction factor 
 
         int R = 2 + depth / 4;
         R = Math.Min(R, 4);
@@ -1404,20 +1404,20 @@ public class Search
         // LOGGING BLOCK
         // ====================================================================
         
-        // long finalTotalNodes = savedNodeCount + savedQNodes;
+        long finalTotalNodes = savedNodeCount + savedQNodes;
         
-        // string engineFolder = AppDomain.CurrentDomain.BaseDirectory;
-        // string filePath = Path.Combine(engineFolder, $"move_stats_pid_{pid}.csv");
+        string engineFolder = AppDomain.CurrentDomain.BaseDirectory;
+        string filePath = Path.Combine(engineFolder, $"move_stats_pid_{pid}.csv");
 
-        // if (!System.IO.File.Exists(filePath))
-        // {
-        //     string header = "Depth,SearchNodes,QNodes,TotalNodes,LMRAttempts,LMRFailHigh,TimeMs,TTProbes,TTHits,TTCutoffs,TTMoveFirst,TTMoveBest,HistoryProbed,HistoryHits,KillerProbed,KillerHits\n";
-        //     System.IO.File.WriteAllText(filePath, header);
-        // }
+        if (!System.IO.File.Exists(filePath))
+        {
+            string header = "Depth,SearchNodes,QNodes,TotalNodes,LMRAttempts,LMRFailHigh,TimeMs,TTProbes,TTHits,TTCutoffs,TTMoveFirst,TTMoveBest,HistoryProbed,HistoryHits,KillerProbed,KillerHits\n";
+            System.IO.File.WriteAllText(filePath, header);
+        }
 
-        // string logLine = $"{completedDepth},{savedNodeCount},{savedQNodes},{finalTotalNodes},{savedLMRAttempts},{savedLMRFailHigh},{savedTimeMs},{savedTtProbes},{savedTtHits},{savedTtCutoffs},{savedTtMoveFirst},{savedTtMoveBest},{savedHistoryProbed},{savedHistoryHit},{savedKillerMovesProbed},{savedKillerMovesHit}\n";
+        string logLine = $"{completedDepth},{savedNodeCount},{savedQNodes},{finalTotalNodes},{savedLMRAttempts},{savedLMRFailHigh},{savedTimeMs},{savedTtProbes},{savedTtHits},{savedTtCutoffs},{savedTtMoveFirst},{savedTtMoveBest},{savedHistoryProbed},{savedHistoryHit},{savedKillerMovesProbed},{savedKillerMovesHit}\n";
         
-        // System.IO.File.AppendAllText(filePath, logLine);
+        System.IO.File.AppendAllText(filePath, logLine);
 
         //LOGGING END=======================
 
